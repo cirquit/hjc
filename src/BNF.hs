@@ -12,7 +12,7 @@ import Lexer
 
 data Stm =
      ComboundStm Stm Stm
-   | AssignStm String Stm
+   | AssignStm String Exp
    | PrintStm [Exp]
    deriving Show
 
@@ -26,10 +26,10 @@ comboundStm = parens $ do
 assignStm :: Parser Stm
 assignStm = do
     id <- identifier
-    symbol ":=" 
-    stm <- stmParser
+    symbol ":="
+    exp <- expParser
     symbol ";"
-    return $ AssignStm id stm
+    return $ AssignStm id exp
 
 printStm :: Parser Stm
 printStm = do
@@ -64,6 +64,18 @@ opExp = do
     exp2 <- expParser
     return $ OpExp exp1 binOp exp2
 
+lookaheadOpExp :: Parser (Exp -> Exp)
+lookaheadOpExp = do
+    exp1 <- numExp <|> idExp
+    binOp <- binOpParser
+    return $ OpExp exp1 binOp
+
+opExp' :: Parser Exp
+opExp' = do
+    exp1 <- lookaheadOpExp
+    exp2 <- try opExp' <|> try numExp <|> try idExp <|> try opExp
+    return $ exp1 exp2
+
 eseqExp :: Parser Exp
 eseqExp = do
     stm <- stmParser
@@ -71,7 +83,7 @@ eseqExp = do
     return $ EseqExp stm exp
 
 expParser :: Parser Exp
-expParser = idExp <|> numExp <|> opExp <|> eseqExp
+expParser = opExp' <|> numExp <|> idExp <|> opExp -- <|> eseqExp
 
 data BinOp =
       PLUS

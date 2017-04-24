@@ -5,10 +5,9 @@ import Lexer
 
 import Text.Megaparsec
 
-parser = binOpParser
+parser = stmParser
 
 main :: IO ()
 main = do
-    input <- readFile "input.txt"
-
+    input <- readFile "u01-input.txt"
     parseTest parser input
