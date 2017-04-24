@@ -1,2 +1,2 @@
 # hmj
-Haskell MiniJava Compiler
+The Haskell MiniJava Compiler build at the LMU course "Compiler Construction"
