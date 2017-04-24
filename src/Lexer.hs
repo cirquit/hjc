@@ -14,8 +14,8 @@ sc = L.space (void spaceChar) lineCmnt blockCmnt
         blockCmnt = L.skipBlockComment "/*" "*/"
 
 -- | run the space consumer after every parser
-lexme :: Parser a -> Parser a
-lexme = L.lexeme sc 
+lexeme :: Parser a -> Parser a
+lexeme = L.lexeme sc 
 
 -- | parse a symbol 
 symbol :: String -> Parser String
@@ -37,10 +37,10 @@ integer = L.integer
 semi :: Parser String
 semi = symbol ";"
 
---string :: Parser String
---string = C.string
 
-{-
+rword :: String -> Parser ()
+rword w = string w *> notFollowedBy alphaNumChar *> sc
+
 rws :: [String] -- list of reserved words
 rws = ["if","then","else","while","do","skip","true","false","not","and","or"]
 
@@ -49,7 +49,5 @@ identifier = (lexeme . try) (p >>= check)
   where
     p       = (:) <$> letterChar <*> many alphaNumChar
     check x = if x `elem` rws
-                then fail $ "keyword " ++ show x ++ " cannot be an identifier"
+                then fail $ "hjc: keyword " ++ show x ++ " cannot be an identifier"
                 else return x
-
--} 

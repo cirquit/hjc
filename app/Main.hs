@@ -5,7 +5,7 @@ import Lexer
 
 import Text.Megaparsec
 
-parser = binOp
+parser = binOpParser
 
 main :: IO ()
 main = do
