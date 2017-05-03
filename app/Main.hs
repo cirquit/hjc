@@ -2,7 +2,6 @@ module Main where
 
 import BNF
 import Lexer
-
 import Text.Megaparsec
 
 parser = stmParser

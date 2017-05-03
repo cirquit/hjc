@@ -1,4 +1,4 @@
-import Parser where
+module Parser where
 
 import BNF
 
