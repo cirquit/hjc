@@ -28,7 +28,6 @@ parens = between (symbol "(") (symbol ")")
 braces :: Parser a -> Parser a
 braces = between (symbol "{") (symbol "}")
 
-
 -- | 'integer' parses an integer.
 integer :: Parser Integer
 integer = L.integer
@@ -37,12 +36,11 @@ integer = L.integer
 semi :: Parser String
 semi = symbol ";"
 
-
 rword :: String -> Parser ()
 rword w = string w *> notFollowedBy alphaNumChar *> sc
 
 rws :: [String] -- list of reserved words
-rws = ["if","then","else","while","do","skip","true","false","not","and","or"]
+rws = ["if","then","else","while","do","skip","true","false","not","and","or", "print"]
 
 identifier :: Parser String
 identifier = (lexeme . try) (p >>= check)
@@ -51,3 +49,6 @@ identifier = (lexeme . try) (p >>= check)
     check x = if x `elem` rws
                 then fail $ "hjc: keyword " ++ show x ++ " cannot be an identifier"
                 else return x
+
+comma :: Parser String
+comma = symbol ","

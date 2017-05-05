@@ -1,4 +1,3 @@
 a := 5+3;
-// a := 5+3;
-// b := (print (a, a-1), 10*a);
-// print (b); 
+b := (print (a, a-1), 10*a);
+print (b);

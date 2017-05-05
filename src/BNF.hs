@@ -10,87 +10,82 @@ import qualified Text.Megaparsec.Lexer as L
 import Text.Megaparsec
 import Lexer
 
+type StraightLineBNF = StmList
+
+data StmList = StmList [Stm] -- stm; stm* 
+   deriving (Show, Eq)
+
 data Stm =
-     ComboundStm Stm Stm
-   | AssignStm String Exp
-   | PrintStm [Exp]
-   deriving Show
+     AssignStm   String  Exp -- id := exp 
+   | PrintStm    ExpList     -- "(" explist ")"
+   deriving (Show, Eq)
 
-comboundStm :: Parser Stm
-comboundStm = parens $ do
-        stm1 <- stmParser
-        symbol ","
-        stm2 <- stmParser
-        return $ ComboundStm stm1 stm2
+data ExpList = ExpList [Exp] -- ","
+   deriving (Show, Eq)
 
-assignStm :: Parser Stm
-assignStm = do
-    id <- identifier
-    symbol ":="
-    exp <- expParser
-    symbol ";"
-    return $ AssignStm id exp
+data Exp = Exp PrimExp [(BinOp, PrimExp)] 
+   deriving (Show, Eq)
 
-printStm :: Parser Stm
-printStm = do
-    symbol "print"
-    expList <- manyTill expParser (symbol " ")
-    return $ PrintStm expList
-
-stmParser :: Parser Stm
-stmParser = comboundStm <|> assignStm <|> printStm
-
-data Exp =
-     IdExp String
-   | NumExp Integer
-   | OpExp Exp BinOp Exp
-   | EseqExp Stm Exp
-   deriving Show
-
-idExp :: Parser Exp
-idExp = do
-    id <- identifier
-    return $ IdExp id
-
-numExp :: Parser Exp
-numExp = do
-    int <- integer
-    return $ NumExp int
-
-opExp :: Parser Exp
-opExp = do
-    exp1 <- expParser
-    binOp <- binOpParser
-    exp2 <- expParser
-    return $ OpExp exp1 binOp exp2
-
-lookaheadOpExp :: Parser (Exp -> Exp)
-lookaheadOpExp = do
-    exp1 <- numExp <|> idExp
-    binOp <- binOpParser
-    return $ OpExp exp1 binOp
-
-opExp' :: Parser Exp
-opExp' = do
-    exp1 <- lookaheadOpExp
-    exp2 <- try opExp' <|> try numExp <|> try idExp <|> try opExp
-    return $ exp1 exp2
-
-eseqExp :: Parser Exp
-eseqExp = do
-    stm <- stmParser
-    exp <- expParser
-    return $ EseqExp stm exp
-
-expParser :: Parser Exp
-expParser = opExp' <|> numExp <|> idExp <|> opExp -- <|> eseqExp
+data PrimExp =
+     IdExp   String
+   | NumExp  Integer
+   | EseqExp StmList Exp     -- "(" stmlist, exp ")" 
+   deriving (Show, Eq)
 
 data BinOp =
       PLUS
     | MINUS
     | TIMES
     | DIV
-    deriving Show
+    deriving (Show, Eq)
+
+stmListParser :: Parser StmList
+stmListParser = do
+    stmList <- stmParser `sepEndBy` semi
+    return $ StmList stmList
+
+
+stmParser :: Parser Stm
+stmParser = assignStm <|> printStm
+
+assignStm :: Parser Stm
+assignStm = do 
+    id <- identifier
+    symbol ":="
+    exp <- expParser
+    return $ AssignStm id exp
+
+printStm  :: Parser Stm
+printStm  = do
+    symbol "print"
+    expList <- parens expListParser
+    return $ PrintStm expList
+
+
+expListParser :: Parser ExpList
+expListParser = ExpList <$> (expParser `sepBy` comma )
+
+expParser :: Parser Exp
+expParser = Exp <$> primExpParser <*> many tupParser
+    where
+        tupParser :: Parser (BinOp, PrimExp)
+        tupParser = (,) <$> binOpParser <*> primExpParser
+
+idExp :: Parser PrimExp
+idExp = IdExp <$> identifier
+
+numExp :: Parser PrimExp
+numExp = NumExp <$> integer
+
+eseqExp :: Parser PrimExp
+eseqExp = parens $ do
+      stmL <- stmListParser
+      comma
+      exp <- expParser
+      return $ EseqExp stmL exp
+
+primExpParser :: Parser PrimExp
+primExpParser = numExp <|> idExp <|> eseqExp
 
 plusOp :: Parser BinOp
 plusOp = symbol "+" *> return PLUS
