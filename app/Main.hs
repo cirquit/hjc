@@ -5,15 +5,28 @@ import Lexer
 import Parser
 import Text.Megaparsec
 
-parser = stmListParser
-
 main :: IO ()
 main = do
-    eitherres <- runParser parser "u01-input.txt" <$> readFile "u01-input.txt"
+    let inputFiles = [
+                      "examples/t0.sl"
+                    , "examples/t1.sl"
+                    , "examples/t2.sl"
+                    , "examples/t3.sl"
+                    , "examples/t4.sl"
+                     ]
+    mapM_ evaluateSLProgram inputFiles
+
+evaluateSLProgram :: FilePath -> IO ()
+evaluateSLProgram inputFile = do
+    putStrLn $ ">> Starting to lex " ++ inputFile
+    eitherres <- runParser stmListParser inputFile <$> readFile inputFile
     case eitherres of
-        (Left errors) -> putStrLn $ "errors while lexing: " ++ (show errors)
+        (Left errors) -> putStrLn $ ">> Errors while lexing: " ++ (show errors)
         (Right ast  ) -> do
-            (nums, ram) <- eval ast
-            putStrLn $ "nums: " ++ show nums
-            putStrLn $ "ram: " ++ show ram
-    return ()
+            putStrLn $ ">> AST Output: "
+            print ast
+            putStrLn $ ">> Evaluating " ++ inputFile ++ ":"
+            (_, memory) <- eval ast
+            putStrLn "\n>> Memory dump:"
+            print memory
+            putStrLn $ ">> End of evaluation for " ++ inputFile ++ "\n"

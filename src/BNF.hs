@@ -13,7 +13,10 @@ import Lexer
 type StraightLineBNF = StmList
 
 data StmList = StmList [Stm] -- stm; stm* 
-   deriving (Show, Eq)
+    deriving (Eq)
+
+instance Show StmList where
+    show (StmList stmList) = unlines $ map show stmList
 
 data Stm =
      AssignStm   String  Exp -- id := exp 
@@ -51,7 +54,7 @@ stmParser = assignStm <|> printStm
 assignStm :: Parser Stm
 assignStm = do 
     id <- identifier
-    symbol ":="
+    symbol ":=" <|> symbol "="
     exp <- expParser
     return $ AssignStm id exp
 
@@ -75,7 +78,7 @@ idExp :: Parser PrimExp
 idExp = IdExp <$> identifier
 
 numExp :: Parser PrimExp
-numExp = NumExp <$> integer
+numExp = NumExp <$> lexeme integer
 
 eseqExp :: Parser PrimExp
 eseqExp = parens $ do
