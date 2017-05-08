@@ -1,9 +1,8 @@
-module Parser where
+module ParserRecords where
 
 import BNF
 import qualified Data.Map as Map
 import Control.Monad (foldM)
--- 2import Control.Monad.State
 import Control.Monad.Trans.State
 import Control.Monad.IO.Class
 

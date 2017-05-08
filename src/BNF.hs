@@ -4,7 +4,7 @@ module BNF where
 import Control.Monad (void)
 import Text.Megaparsec
 import Text.Megaparsec.Expr
-import Text.Megaparsec.String -- input stream is of type ‘String’
+import Text.Megaparsec.String
 import qualified Text.Megaparsec.Lexer as L
 
 import Text.Megaparsec

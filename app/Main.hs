@@ -2,7 +2,9 @@ module Main where
 
 import BNF
 import Lexer
-import Parser
+import ParserLens        -- same functionality as ParserRecords
+                         -- but with Lenses
+-- import ParserRecords  --
 import Text.Megaparsec
 
 main :: IO ()
