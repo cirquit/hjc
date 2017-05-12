@@ -1,6 +1,7 @@
 module Lexer where
 
 import Control.Monad (void)
+import Data.Functor.Identity
 import Text.Megaparsec
 import Text.Megaparsec.Expr
 import Text.Megaparsec.String -- input stream is of type ‘String’
@@ -30,7 +31,7 @@ braces = between (symbol "{") (symbol "}")
 
 -- | 'integer' parses an integer.
 integer :: Parser Integer
-integer = L.integer
+integer = lexeme L.integer
 
 -- | 'semi' parses a semicolon.
 semi :: Parser String
@@ -40,7 +41,11 @@ rword :: String -> Parser ()
 rword w = string w *> notFollowedBy alphaNumChar *> sc
 
 rws :: [String] -- list of reserved words
-rws = ["if","then","else","while","do","skip","true","false","not","and","or", "print"]
+rws = ["if","then","else","while","do", "break"]
+   ++ ["true","false"]
+   ++ ["char", "int", "boolean"] 
+   ++ ["this", "new", "extends", "class", "public"]
+   ++ ["length"]
 
 identifier :: Parser String
 identifier = (lexeme . try) (p >>= check)
@@ -52,3 +57,6 @@ identifier = (lexeme . try) (p >>= check)
 
 comma :: Parser String
 comma = symbol ","
+
+dot :: Parser String
+dot = symbol "."

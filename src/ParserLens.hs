@@ -7,6 +7,8 @@ import Control.Monad.Trans.State
 import Control.Monad.IO.Class
 import Control.Lens
 
+
+{-- 
 -- boilerplate
 io :: MonadIO m => IO a -> m a 
 io = liftIO
@@ -124,3 +126,5 @@ evalBinOp PLUS  = (+)
 evalBinOp MINUS = (-)
 evalBinOp TIMES = (*)
 evalBinOp DIV   = div
+
+--}

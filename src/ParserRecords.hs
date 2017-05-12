@@ -5,7 +5,7 @@ import qualified Data.Map as Map
 import Control.Monad (foldM)
 import Control.Monad.Trans.State
 import Control.Monad.IO.Class
-
+{-- 
 -- boilerplate
 io :: MonadIO m => IO a -> m a 
 io = liftIO
@@ -114,3 +114,4 @@ evalBinOp MINUS = (-)
 evalBinOp TIMES = (*)
 evalBinOp DIV   = div
 
+--}
