@@ -1,6 +1,6 @@
 module ParserLens where
 
-import BNF
+import AST
 import qualified Data.Map as Map
 import Control.Monad (foldM)
 import Control.Monad.Trans.State

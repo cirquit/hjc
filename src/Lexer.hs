@@ -32,6 +32,9 @@ braces = between (symbol "{") (symbol "}")
 brackets :: Parser a -> Parser a
 brackets = between (symbol "[") (symbol "]")
 
+stringLiteral :: Parser String
+stringLiteral = char '"' >> manyTill L.charLiteral (char '"')
+
 -- | 'integer' parses an integer.
 integer :: Parser Integer
 integer = lexeme L.integer
