@@ -108,9 +108,15 @@ boolP =  symbol "true" *> return True
      <|> symbol "false" *> return False
 
 
-opTable = [
-    [ InfixL (binaryOps [("*", MUL), ("/", DIV), ("%", MOD)]) ]
-        ]
+opTable =
+    [
+       [ InfixL (binaryOps [("*", MUL), ("/", DIV), ("%", MOD)]) ]
+    ,  [ InfixL (binaryOps [("+", PLUS), ("-", MINUS)]) ]
+    ,  [ InfixL (binaryOps [("<=", LEQ), ("<", LE), (">=", GEQ), (">", GE)])]
+    ,  [ InfixL (binaryOps [("==", EQS), ("!=", NEQS)])]
+    ,  [ InfixL (binaryOps [("&&", AND)])]
+    ,  [ InfixL (binaryOps [("||", OR)])]
+    ]
 
 data Expression =
     LitBool  Bool
@@ -137,8 +143,8 @@ data BinaryOp =
     | LE      -- (<)   3
     | GEQ     -- (>=)  3
     | GE      -- (>)   3
-    | EQ      -- (==)  4
-    | NEQ     -- (/=)  4
+    | EQS     -- (==)  4
+    | NEQS    -- (/=)  4
     | AND     -- (&&)  5
     | OR      -- (||)  6
   deriving (Show, Eq)
