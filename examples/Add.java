@@ -1,16 +1,10 @@
 class Add {
-    // String[] strarr;
-    public static void main(String[] args){
-        System.out.println(1 * 1);
-        //System.out.print((char) false);
+    public static void main(String[] a) {
+            System.out.println(1336 + 1);
     }
 }
 
-// class Mul {
-//     int x;
-// 
-//     public int mul(int a, int b)
-//     {
-// 
-//     }
-// }
+class Test{
+    int[] x;
+    public int add(){ return x.length; }
+}

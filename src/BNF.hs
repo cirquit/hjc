@@ -24,6 +24,7 @@ instance Show MiniJava where
 -- class <name> (extends <name>) { [methods]; [attributes] }
 data Class = Class
     { _className  :: Identifier
+    , _extends    :: Identifier
     , _variables  :: [Variable]
     , _methods    :: [Method]
     } deriving (Show, Eq)
@@ -38,119 +39,54 @@ data Method = Method
     } deriving (Show, Eq)
 
 data Statement =
-    If      Expression Statement (Maybe Statement)   -- if exp { stm } (else {})
-  | While   Expression Statement
-  | PrintLn Expression
-  | Print   Expression
-  | StmExp  Expression
- -- | MulStm  [Statement]                               -- stm; \n stm;
+    If       Expression [Statement] (Maybe [Statement])   -- if exp { stm } (else {})
+  | While    Expression [Statement]
+  | PrintLn  Expression
+  | Print    Expression
+  | StmExp   Expression
+  | BlockStm [Statement]
   deriving (Show, Eq)
 
-statementP :: Parser Statement
-statementP = ifP <|> whileP <|> try printLnP <|> printP
-                 <|> stmExpP -- <|> whileP <|> printLnP
-      --- <|> printP <|> blockP <|> stmExpP
-
-ifP :: Parser Statement 
-ifP = do
-  symbol "if"
-  ifexp  <- parens expressionP
-  stms <- braces statementP
-  elseexp <- optional $ symbol "else" *> braces statementP
-  return $ If ifexp stms elseexp 
-
-whileP :: Parser Statement 
-whileP = do
-  symbol "while"
-  ifexp <- parens expressionP
-  stms  <- braces statementP
-  return $ While ifexp stms
-
-printLnP :: Parser Statement 
-printLnP = do
-  symbol "System" *> dot *> symbol "out" *> dot <* symbol "println"
-  PrintLn <$> parens expressionP <* semi
-
-printP :: Parser Statement 
-printP = do
-  symbol "System" *> dot *> symbol "out" *> dot <* symbol "print"
-  Print <$> parens ((parens $ symbol "char") *> expressionP) <* semi
-
-blockP :: Parser Statement 
-blockP = undefined
-
-stmExpP :: Parser Statement 
-stmExpP = StmExp <$> expressionP
-
-expressionP :: Parser Expression
-expressionP = makeExprParser primaryP opTable 
-
-primaryP :: Parser Expression
-primaryP = litBoolP <|> litVarP <|> litIntP 
-
-litVarP :: Parser Expression
-litVarP = LitVar <$> varDeclarationP
-
-litBoolP :: Parser Expression
-litBoolP = LitBool <$> boolP
-
-litIntP :: Parser Expression
-litIntP = LitInt <$> integer
-
-lengthP :: Parser Expression
-lengthP = do
-  exp <- expressionP
-  dot *> symbol "length"
-  return $ Length exp
-
-boolP :: Parser Bool
-boolP =  symbol "true" *> return True
-     <|> symbol "false" *> return False
-
-
-opTable =
-    [
-       [ InfixL (binaryOps [("*", MUL), ("/", DIV), ("%", MOD)]) ]
-    ,  [ InfixL (binaryOps [("+", PLUS), ("-", MINUS)]) ]
-    ,  [ InfixL (binaryOps [("<=", LEQ), ("<", LE), (">=", GEQ), (">", GE)])]
-    ,  [ InfixL (binaryOps [("==", EQS), ("!=", NEQS)])]
-    ,  [ InfixL (binaryOps [("&&", AND)])]
-    ,  [ InfixL (binaryOps [("||", OR)])]
-    ]
 
 data Expression =
-    LitBool  Bool
-  | LitInt   Integer
-  | LitVar   Variable
-  | IndexGet Expression                  -- x[expr]
-  | NewObject Identifier
-  | Assign  Variable Expression          -- <type> <name> = <exp>;
+    LitBool   Bool
+  | LitInt    Integer
+  | LitVar    Variable
+  | IntArr    Expression
+  | LitIdent  Identifier
+  | NewObject Identifier  [Expression]
+  | IndexGet  Expression  Expression      -- x[expr]
+  | MemberGet Expression  Identifier      -- x.var
+  | MethodGet Expression  Identifier [Expression] -- x.method(a,b,c)
+  | Assign    Expression  Expression        -- [<type>] <name> = <exp>;
   | BinOp   Expression BinaryOp Expression  -- <exp> *,/... <exp>
-  | NotOp   Expression                   -- ! <exp>
-  | Length  Expression                   -- <exp> . length
+  | UnOp    UnaryOp    Expression                   -- ! <exp>
+  | Length  Expression
   | This
---  | MemberGet Expression Identifier
---  | VariableGet Identifier
+  | BlockExp [Expression]
+  | Return    Expression
+  deriving (Show, Eq)
+
+
+data UnaryOp =
+    NOT       -- (!)   2
   deriving (Show, Eq)
 
 data BinaryOp =
-      MUL     -- (*)   1
-    | DIV     -- div   1
-    | MOD     -- mod   1
-    | PLUS    -- (+)   2
-    | MINUS   -- (-)   2
-    | LEQ     -- (<=)  3
-    | LE      -- (<)   3
-    | GEQ     -- (>=)  3
-    | GE      -- (>)   3
-    | EQS     -- (==)  4
-    | NEQS    -- (/=)  4
-    | AND     -- (&&)  5
-    | OR      -- (||)  6
+      MUL     -- (*)   3
+    | DIV     -- div   3
+    | MOD     -- mod   3
+    | PLUS    -- (+)   4
+    | MINUS   -- (-)   4
+    | LEQ     -- (<=)  5
+    | LE      -- (<)   5
+    | GEQ     -- (>=)  5
+    | GE      -- (>)   5
+    | EQS     -- (==)  6
+    | NEQS    -- (/=)  6
+    | AND     -- (&&)  7
+    | OR      -- (||)  8
   deriving (Show, Eq)
-
-binaryOps :: [(String, BinaryOp)] -> Parser (Expression -> Expression -> Expression)
-binaryOps ops = foldr1 (<|>) $ map (\(s, op) -> (\e1 e2 -> BinOp e1 op e2) <$ try (symbol s)) ops
 
 
 data Variable = Variable
@@ -176,21 +112,26 @@ miniJavaParser = MiniJava <$> mainClassP
 
 mainClassP :: Parser Class
 mainClassP = do
+  sc    -- TODO: This is somehow needed for examples/TreeVisitor.java
   symbol "class"
   id <- identifier
   (vars, main, methods) <- braces $ (,,) <$> many varDeclarationP
                                          <*> mainMethodP
                                          <*> many methodP
-  return $ Class id vars (main:methods)
+  return $ Class id "Object" vars (main:methods)
 
 usualClassP :: Parser Class
 usualClassP = do
   symbol "class"
   id     <- identifier
+  extends <- option "Object" $ symbol "extends" *> identifier
   (vars, methods) <- braces $ (,) <$> many varDeclarationP
                                   <*> many methodP
-  return $ Class id vars methods
+  return $ Class id extends vars methods
 
+
+-- | Method Parser
+--
 mainMethodP :: Parser Method
 mainMethodP = do
   symbol "public"
@@ -210,6 +151,114 @@ methodP = do
   stms <- braces $ many statementP
   return $ Method id typ vars stms
 
+
+-- | Statement Parser
+--
+statementP :: Parser Statement
+statementP = try ifP <|> whileP  <|> try printLnP <|> printP
+                     <|> stmExpP <|> blockStmP
+
+ifP :: Parser Statement 
+ifP = do
+  symbol "if"
+  ifexp  <- parens expressionP
+  stms <- (braces $ many statementP) <|> many statementP
+  elseexp <- optional $ symbol "else" *> (braces (many statementP) <|> (many statementP))
+  return $ If ifexp stms elseexp 
+
+whileP :: Parser Statement 
+whileP = do
+  symbol "while"
+  ifexp <- parens expressionP
+  stms  <- braces $ many statementP
+  return $ While ifexp stms
+
+printLnP :: Parser Statement 
+printLnP = do
+  symbol "System" *> dot *> symbol "out" *> dot <* symbol "println"
+  PrintLn <$> parens expressionP <* semi
+
+printP :: Parser Statement 
+printP = do
+  symbol "System" *> dot *> symbol "out" *> dot <* symbol "print"
+  Print <$> parens ((parens $ symbol "char") *> expressionP) <* semi
+
+stmExpP :: Parser Statement 
+stmExpP = StmExp <$> expressionP <* semi
+
+blockStmP :: Parser Statement
+blockStmP = BlockStm <$> (braces $ many statementP)
+
+-- | Expression Parser
+--
+expressionP :: Parser Expression
+expressionP = makeExprParser primaryP opTable
+
+primaryP :: Parser Expression
+primaryP = litBoolP <|> try litVarP <|> litIntP <|> litIdentP
+       <|> thisP    <|> try intArrP <|> newObjP <|> blockExpP
+       <|> returnP
+
+returnP :: Parser Expression
+returnP = Return <$> (symbol "return" *> expressionP)
+
+blockExpP :: Parser Expression
+blockExpP = BlockExp <$> parens (some expressionP)
+
+litVarP :: Parser Expression
+litVarP = LitVar <$> variableP
+
+litBoolP :: Parser Expression
+litBoolP = LitBool <$> boolP
+
+litIntP :: Parser Expression
+litIntP = LitInt <$> integer
+
+thisP :: Parser Expression
+thisP = symbol "this" *> return This
+
+litIdentP :: Parser Expression
+litIdentP = LitIdent <$> identifier
+
+intArrP :: Parser Expression
+intArrP = IntArr <$> (symbol "new" *> symbol "int" *> brackets expressionP)
+
+newObjP :: Parser Expression
+newObjP = do
+  symbol "new"
+  id <- identifier
+  args <- parens (expressionP `sepBy` comma)
+  return $ NewObject id args
+
+boolP :: Parser Bool
+boolP =  symbol "true" *> return True
+     <|> symbol "false" *> return False
+
+opTable =
+    [
+       [ Postfix (flip IndexGet <$> brackets expressionP)
+       , Postfix (try $ (\mname args obj -> MethodGet obj mname args)
+                     <$ dot <*> identifier <*> parens (expressionP `sepBy` comma))
+       , Postfix (flip MemberGet <$ dot <*> identifier)
+       ]
+    ,  [ Prefix (unaryOps [("!", NOT)]) ]
+    ,  [ InfixL (binaryOps [("*", MUL), ("/", DIV), ("%", MOD)]) ]
+    ,  [ InfixL (binaryOps [("+", PLUS), ("-", MINUS)] )]
+    ,  [ InfixL (binaryOps [("<=", LEQ), ("<", LE), (">=", GEQ), (">", GE)] )]
+    ,  [ InfixL (binaryOps [("==", EQS), ("!=", NEQS)] )]
+    ,  [ InfixL (binaryOps [("&&", AND)] )]
+    ,  [ InfixL (binaryOps [("||", OR)] )]
+    ,  [ InfixR (Assign <$ symbol "=")]
+    ]
+
+unaryOps :: [(String, UnaryOp)] -> Parser (Expression -> Expression)
+unaryOps ops = foldr1 (<|>) $ map (\(s, op) -> (\e1 -> UnOp op e1) <$ try (symbol s)) ops
+
+binaryOps :: [(String, BinaryOp)] -> Parser (Expression -> Expression -> Expression)
+binaryOps ops = foldr1 (<|>) $ map (\(s, op) -> (\e1 e2 -> BinOp e1 op e2) <$ try (symbol s)) ops
+
+-- | Variable Parser
+--
 variableP :: Parser Variable
 variableP = Variable <$> typeP <*> identifier
 
@@ -225,3 +274,4 @@ typeP = do
   <|>         symbol "boolean"  *> return BoolT
   <|>         symbol "void"     *> return VoidT
   <|>                     IdT  <$> identifier
+

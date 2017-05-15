@@ -25,6 +25,7 @@ library
                      , mtl          >= 2.2.0   && < 3
                      , transformers >= 0.5.0.0 && < 6
                      , lens         >= 4.0.0   && < 5
+                     , rainbow >= 0.28.0.4
   default-language:    Haskell2010
 
 executable hjc
@@ -34,6 +35,9 @@ executable hjc
   build-depends:       base
                      , hjc
                      , megaparsec  >=5.2.0 && < 6
+                     , rainbow >= 0.28.0.4
+                     , directory  >= 1.0.0.0
+                     , filepath   >= 1.4.0.0
   default-language:    Haskell2010
 
 test-suite hjc-test
