@@ -14,83 +14,79 @@ import Lexer
 testParser = miniJavaParser
 
 miniJavaParser :: Parser MiniJava
-miniJavaParser = MiniJava <$> mainClassP
-                          <*> many usualClassP
+miniJavaParser = MiniJava <$> mainClassP <*> many usualClassP
 
 mainClassP :: Parser Class
 mainClassP = do
-  sc    -- TODO: This is somehow needed for examples/TreeVisitor.java
-  symbol "class"
-  id <- identifier
-  (vars, main, methods) <- braces $ (,,) <$> many varDeclarationP
-                                         <*> mainMethodP
-                                         <*> many methodP
-  return $ Class id "Object" vars (main:methods)
+    sc -- TODO: This is somehow needed for examples/TreeVisitor.java
+    symbol "class"
+    id <- identifier
+    (vars, main, methods) <-
+        braces $ (,,) <$> many varDeclarationP <*> mainMethodP <*> many methodP
+    return $ Class id "Object" vars (main : methods)
 
 usualClassP :: Parser Class
 usualClassP = do
-  symbol "class"
-  id     <- identifier
-  extends <- option "Object" $ symbol "extends" *> identifier
-  (vars, methods) <- braces $ (,) <$> many varDeclarationP
-                                  <*> many methodP
-  return $ Class id extends vars methods
-
+    symbol "class"
+    id <- identifier
+    extends <- option "Object" $ symbol "extends" *> identifier
+    (vars, methods) <- braces $ (,) <$> many varDeclarationP <*> many methodP
+    return $ Class id extends vars methods
 
 -- | Method Parser
 --
 mainMethodP :: Parser Method
 mainMethodP = do
-  symbol "public"
-  symbol "static"
-  typ <- pure VoidT <* symbol "void"
-  id  <- symbol "main"
-  vars <- parens $ variableP `sepBy` comma
-  stms <- braces $ many statementP
-  return $ Method id typ vars stms
+    symbol "public"
+    symbol "static"
+    typ <- pure VoidT <* symbol "void"
+    id <- symbol "main"
+    vars <- parens $ variableP `sepBy` comma
+    stms <- braces $ many statementP
+    return $ Method id typ vars stms
 
 methodP :: Parser Method
 methodP = do
-  symbol "public"
-  typ  <- typeP
-  id   <- identifier
-  vars <- parens $ variableP `sepBy` comma
-  stms <- braces $ many statementP
-  return $ Method id typ vars stms
-
+    symbol "public"
+    typ <- typeP
+    id <- identifier
+    vars <- parens $ variableP `sepBy` comma
+    stms <- braces $ many statementP
+    return $ Method id typ vars stms
 
 -- | Statement Parser
 --
 statementP :: Parser Statement
-statementP = try ifP <|> whileP  <|> try printLnP <|> printP
-                     <|> stmExpP <|> blockStmP
+statementP = try ifP <|> whileP <|> try printLnP <|> printP <|> stmExpP <|> blockStmP
 
-ifP :: Parser Statement 
+ifP :: Parser Statement
 ifP = do
-  symbol "if"
-  ifexp  <- parens expressionP
-  stms <- (braces $ many statementP) <|> many statementP
-  elseexp <- optional $ symbol "else" *> (braces (many statementP) <|> (many statementP))
-  return $ If ifexp stms elseexp 
+    symbol "if"
+    ifexp <- parens expressionP
+    stms <- (braces $ many statementP) <|> many statementP
+    elseexp <-
+        optional $
+        symbol "else" *> (braces (many statementP) <|> (many statementP))
+    return $ If ifexp stms elseexp
 
-whileP :: Parser Statement 
+whileP :: Parser Statement
 whileP = do
-  symbol "while"
-  ifexp <- parens expressionP
-  stms  <- braces $ many statementP
-  return $ While ifexp stms
+    symbol "while"
+    ifexp <- parens expressionP
+    stms <- braces $ many statementP
+    return $ While ifexp stms
 
-printLnP :: Parser Statement 
+printLnP :: Parser Statement
 printLnP = do
-  symbol "System" *> dot *> symbol "out" *> dot <* symbol "println"
-  PrintLn <$> parens expressionP <* semi
+    symbol "System" *> dot *> symbol "out" *> dot <* symbol "println"
+    PrintLn <$> parens expressionP <* semi
 
-printP :: Parser Statement 
+printP :: Parser Statement
 printP = do
-  symbol "System" *> dot *> symbol "out" *> dot <* symbol "print"
-  Print <$> parens ((parens $ symbol "char") *> expressionP) <* semi
+    symbol "System" *> dot *> symbol "out" *> dot <* symbol "print"
+    Print <$> parens ((parens $ symbol "char") *> expressionP) <* semi
 
-stmExpP :: Parser Statement 
+stmExpP :: Parser Statement
 stmExpP = StmExp <$> expressionP <* semi
 
 blockStmP :: Parser Statement
@@ -102,9 +98,13 @@ expressionP :: Parser Expression
 expressionP = makeExprParser primaryP opTable
 
 primaryP :: Parser Expression
-primaryP = litBoolP <|> try litVarP <|> litIntP <|> litIdentP
-       <|> thisP    <|> try intArrP <|>  try strArrP <|> blockExpP
-       <|> returnP  <|> newObjP     <|> litStrP
+primaryP =
+    litBoolP <|> try litVarP <|> litIntP <|> litIdentP <|> thisP <|> try intArrP <|>
+    try strArrP <|>
+    blockExpP <|>
+    returnP <|>
+    newObjP <|>
+    litStrP
 
 returnP :: Parser Expression
 returnP = Return <$> (symbol "return" *> expressionP)
@@ -136,40 +136,43 @@ intArrP = IntArr <$> (symbol "new" *> symbol "int" *> brackets expressionP)
 strArrP :: Parser Expression
 strArrP = StrArr <$> (symbol "new" *> symbol "String" *> brackets expressionP)
 
-
 newObjP :: Parser Expression
 newObjP = do
-  symbol "new"
-  id <- identifier
-  args <- parens (expressionP `sepBy` comma)
-  return $ NewObject id args
+    symbol "new"
+    id <- identifier
+    args <- parens (expressionP `sepBy` comma)
+    return $ NewObject id args
 
 boolP :: Parser Bool
-boolP =  symbol "true" *> return True
-     <|> symbol "false" *> return False
+boolP = symbol "true" *> return True <|> symbol "false" *> return False
 
 opTable =
-    [
-       [ Postfix (flip IndexGet <$> brackets expressionP)
-       , Postfix (try $ (\mname args obj -> MethodGet obj mname args)
-                     <$ dot <*> identifier <*> parens (expressionP `sepBy` comma))
-       , Postfix (flip MemberGet <$ dot <*> identifier)
-       ]
-    ,  [ Prefix (unaryOps [("!", NOT)]) ]
-    ,  [ InfixL (binaryOps [("*", MUL), ("/", DIV), ("%", MOD)]) ]
-    ,  [ InfixL (binaryOps [("+", PLUS), ("-", MINUS)] )]
-    ,  [ InfixL (binaryOps [("<=", LEQ), ("<", LE), (">=", GEQ), (">", GE)] )]
-    ,  [ InfixL (binaryOps [("==", EQS), ("!=", NEQS)] )]
-    ,  [ InfixL (binaryOps [("&&", AND)] )]
-    ,  [ InfixL (binaryOps [("||", OR)] )]
-    ,  [ InfixR (Assign <$ symbol "=")]
+    [ [ Postfix (flip IndexGet <$> brackets expressionP)
+      , Postfix
+            (try $
+             (\mname args obj -> MethodGet obj mname args) <$ dot <*> identifier <*>
+             parens (expressionP `sepBy` comma))
+      , Postfix (flip MemberGet <$ dot <*> identifier)
+      ]
+    , [Prefix (unaryOps [("!", NOT)])]
+    , [InfixL (binaryOps [("*", MUL), ("/", DIV), ("%", MOD)])]
+    , [InfixL (binaryOps [("+", PLUS), ("-", MINUS)])]
+    , [InfixL (binaryOps [("<=", LEQ), ("<", LE), (">=", GEQ), (">", GE)])]
+    , [InfixL (binaryOps [("==", EQS), ("!=", NEQS)])]
+    , [InfixL (binaryOps [("&&", AND)])]
+    , [InfixL (binaryOps [("||", OR)])]
+    , [InfixR (Assign <$ symbol "=")]
     ]
 
 unaryOps :: [(String, UnaryOp)] -> Parser (Expression -> Expression)
-unaryOps ops = foldr1 (<|>) $ map (\(s, op) -> (\e1 -> UnOp op e1) <$ try (symbol s)) ops
+unaryOps ops =
+    foldr1 (<|>) $ map (\(s, op) -> (\e1 -> UnOp op e1) <$ try (symbol s)) ops
 
-binaryOps :: [(String, BinaryOp)] -> Parser (Expression -> Expression -> Expression)
-binaryOps ops = foldr1 (<|>) $ map (\(s, op) -> (\e1 e2 -> BinOp e1 op e2) <$ try (symbol s)) ops
+binaryOps :: [(String, BinaryOp)]
+          -> Parser (Expression -> Expression -> Expression)
+binaryOps ops =
+    foldr1 (<|>) $
+    map (\(s, op) -> (\e1 e2 -> BinOp e1 op e2) <$ try (symbol s)) ops
 
 -- | Variable Parser
 --
@@ -180,12 +183,10 @@ varDeclarationP :: Parser Variable
 varDeclarationP = variableP <* semi
 
 typeP :: Parser Type
-typeP = do
-      try $   symbol "int[]"    *> return IntArrT
-  <|>         symbol "String[]" *> return StringArrT
-  <|>         symbol "String"   *> return StringT
-  <|>         symbol "int"      *> return IntT
-  <|>         symbol "boolean"  *> return BoolT
-  <|>         symbol "void"     *> return VoidT
-  <|>                     IdT  <$> identifier
-
+typeP =
+    do try $ symbol "int[]" *> return IntArrT <|> symbol "String[]" *> return StringArrT <|>
+    symbol "String" *> return StringT <|>
+    symbol "int" *> return IntT <|>
+    symbol "boolean" *> return BoolT <|>
+    symbol "void" *> return VoidT <|>
+    IdT <$> identifier

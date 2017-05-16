@@ -11,12 +11,13 @@ import qualified Text.Megaparsec.Lexer as L
 -- | space consumer
 sc :: Parser ()
 sc = L.space (void spaceChar) lineCmnt blockCmnt
-  where lineCmnt  = L.skipLineComment "//"
-        blockCmnt = L.skipBlockComment "/*" "*/"
+  where
+    lineCmnt = L.skipLineComment "//"
+    blockCmnt = L.skipBlockComment "/*" "*/"
 
 -- | run the space consumer after every parser
 lexeme :: Parser a -> Parser a
-lexeme = L.lexeme sc 
+lexeme = L.lexeme sc
 
 -- | parse a symbol 
 symbol :: String -> Parser String
@@ -47,18 +48,20 @@ rword :: String -> Parser ()
 rword w = string w *> notFollowedBy alphaNumChar *> sc
 
 rws :: [String] -- list of reserved words
-rws = ["if","then","else","while","do", "break"]
-   ++ ["true","false"]
-   ++ ["char", "int", "boolean", "int[]"] 
-   ++ ["this", "new", "extends", "class", "public", "return"]
+rws =
+    ["if", "then", "else", "while", "do", "break"] ++
+    ["true", "false"] ++
+    ["char", "int", "boolean", "int[]"] ++
+    ["this", "new", "extends", "class", "public", "return"]
 
 identifier :: Parser String
 identifier = (lexeme . try) (p >>= check)
   where
-    p       = (:) <$> letterChar <*> many (alphaNumChar <|> char '_')
-    check x = if x `elem` rws
-                then fail $ "keyword " ++ show x ++ " cannot be an identifier"
-                else return x
+    p = (:) <$> letterChar <*> many (alphaNumChar <|> char '_')
+    check x =
+        if x `elem` rws
+            then fail $ "keyword " ++ show x ++ " cannot be an identifier"
+            else return x
 
 comma :: Parser String
 comma = symbol ","
