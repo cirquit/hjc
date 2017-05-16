@@ -16,7 +16,8 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Lexer
-                     , BNF
+                     , AST
+                     , ASTParser
                      , ParserRecords
                      , ParserLens
   build-depends:       base         >= 4.7     && < 5

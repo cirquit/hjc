@@ -1,6 +1,7 @@
 module Main where
 
-import BNF
+import AST
+import ASTParser
 import Lexer
 import ParserLens        -- same functionality as ParserRecords
                          -- but with Lenses
@@ -35,8 +36,8 @@ evaluateSLProgram inputFile = do
     case eitherres of
         (Left errors) -> showErrors inputFile errors
         (Right ast  ) -> do
-            -- putStrLn $ ">> AST Output: "
-            -- print ast
+            putStrLn $ ">> AST Output: "
+            print ast
             putStrLn $ ">> Successfully parsed " ++ inputFile
             putStrLn $ replicate 80 '-'
 
