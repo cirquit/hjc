@@ -98,7 +98,7 @@ expressionP :: Parser Expression
 expressionP = makeExprParser primaryP opTable
 
 primaryP :: Parser Expression
-primaryP =
+primaryP = 
     litBoolP <|> try litVarP <|> litIntP <|> litIdentP <|> thisP <|> try intArrP <|>
     try strArrP <|>
     blockExpP <|>
@@ -146,13 +146,11 @@ newObjP = do
 boolP :: Parser Bool
 boolP = symbol "true" *> return True <|> symbol "false" *> return False
 
+
+
 opTable =
     [ [ Postfix (flip IndexGet <$> brackets expressionP)
-      , Postfix
-            (try $
-             (\mname args obj -> MethodGet obj mname args) <$ dot <*> identifier <*>
-             parens (expressionP `sepBy` comma))
-      , Postfix (flip MemberGet <$ dot <*> identifier)
+      , Postfix $ foldr1 (.) <$> some (methodGetP <|> memberGetP)
       ]
     , [Prefix (unaryOps [("!", NOT)])]
     , [InfixL (binaryOps [("*", MUL), ("/", DIV), ("%", MOD)])]
@@ -163,6 +161,22 @@ opTable =
     , [InfixL (binaryOps [("||", OR)])]
     , [InfixR (Assign <$ symbol "=")]
     ]
+
+methodGetP :: Parser (Expression -> Expression)
+methodGetP = try $ do
+    dot
+    id <- identifier
+    exps <- parens (expressionP `sepBy` comma)
+    return (\obj -> MethodGet obj id exps)
+
+memberGetP :: Parser (Expression -> Expression)
+memberGetP = do 
+    dot
+    id <- identifier
+    return (\e -> MemberGet e id)
+--
+--manyUnaryOps :: Parser (Expression -> Expression) -> Parser (Expression -> Expression)
+--manyUnaryOps = foldr1 (.) <$> some 
 
 unaryOps :: [(String, UnaryOp)] -> Parser (Expression -> Expression)
 unaryOps ops =
@@ -184,7 +198,7 @@ varDeclarationP = variableP <* semi
 
 typeP :: Parser Type
 typeP =
-    do try $ symbol "int[]" *> return IntArrT <|> symbol "String[]" *> return StringArrT <|>
+    try (symbol "int[]" *> return IntArrT) <|> symbol "String[]" *> return StringArrT <|>
     symbol "String" *> return StringT <|>
     symbol "int" *> return IntT <|>
     symbol "boolean" *> return BoolT <|>

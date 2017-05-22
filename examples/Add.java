@@ -6,5 +6,9 @@ class Add {
 
 class Test{
     int[] x;
-    public int add(){ return x.length; }
+    public int add(){
+     // d = image.blur().blur().blur(); //.printPPM();
+
+     b = x.test().run1().run1.run2().run;
+    }
 }

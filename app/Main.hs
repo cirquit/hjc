@@ -1,82 +1,64 @@
+{-# LANGUAGE BangPatterns #-}
+
 module Main where
 
 import AST
 import ASTParser
 import Lexer
-import ParserLens -- same functionality as ParserRecords
+import Output
 
--- but with Lenses
--- import ParserRecords  --
 import Text.Megaparsec
-import Text.Megaparsec.Pos (Pos())
-import Prelude hiding (head)
-import Data.Set (toAscList)
-import Rainbow
-import Data.List.NonEmpty (head)
-import System.Directory
+import Control.Monad (mapM_)
+import System.Directory (listDirectory)
 import System.FilePath.Posix ((</>))
 
+defaultConfig :: Config
+defaultConfig = Config 
+    {
+      parse'      = Just True
+    , showAst'    = Just False 
+    , showResult' = Just False
+    , showTime'   = Just True
+    }
+
+-- run all examples
 main :: IO ()
 main = do
     let directory = "../examples"
-    inputFiles <- map (\x -> directory </> x) <$> listDirectory directory
-    -- let inputFiles = [
-    --                    "../examples/Add.java"
-    --                  , "../examples/Arg.java"
-    --                  , "../examples/Arithmetic.java"
-    --                  , "../examples/BinarySearch.java"
-    --                  , "../examples/Call.java"
-    --                  ]
-    mapM_ evaluateSLProgram inputFiles
+    inputFiles <- filter (/= "../examples/z_ShouldFail") . map (\x -> directory </> x) <$> listDirectory directory
+    (t, _) <- timeItT $ mapM_ (evaluateSLProgram defaultConfig) inputFiles
+    putStrLn $ "Used " ++ show (t * 1e-4) ++ "s cpu-time." 
 
-evaluateSLProgram :: FilePath -> IO ()
-evaluateSLProgram inputFile = do
+-- run single example
+main' :: IO ()
+main' = do
+    let inputFiles = [ "../examples/Add.java" ]
+    mapM_ (evaluateSLProgram defaultConfig) inputFiles 
+
+-- run examples that should fail (logically, not lexically)
+main'' :: IO ()
+main'' = do
+    let failedDir = "../examples/z_ShouldFail"
+    failedInputFiles <- map (\x -> failedDir </> x) <$> listDirectory failedDir
+    mapM_ (evaluateSLProgram defaultConfig) failedInputFiles
+
+
+evaluateSLProgram :: Config -> FilePath -> IO ()
+evaluateSLProgram config inputFile = do
     putStrLn $ ">> Starting to lex " ++ inputFile
-    eitherres <- runParser testParser inputFile <$> readFile inputFile
-    case eitherres of
-        (Left errors) -> showErrors inputFile errors
-        (Right ast) -> do
-            putStrLn $ ">> AST Output: "
-            print ast
-            putStrLn $ ">> Successfully parsed " ++ inputFile
-            putStrLn $ replicate 80 '-'
-
--- putStrLn $ ">> Evaluating " ++ inputFile ++ ":"
--- (_, memory) <- eval ast
--- putStrLn "\n>> Memory dump:"
--- print memory
--- putStrLn $ ">> End of evaluation for " ++ inputFile ++ "\n"
-showErrors :: FilePath -> ParseError Char Dec -> IO ()
-showErrors fp (ParseError ps unexpected expected customHelp) = do
-    input <- readFile fp
-    let fileLine = (lines input) !! (line - 1)
-    putStr $ ">> " ++ fp ++ ":"
-    putChunk $ (chunk line') <> (chunk (':' : col')) & bold
-    putStrLn $ ": error:"
-    putStrLn $ ""
-    putStrLn $ "  unexpected tokens: " ++ show (toAscList unexpected)
-    putStrLn $ "    expected tokens: " ++ show (toAscList expected)
-    putStrLn $ ""
-    putStrLn $ "..."
-    putStrLn $ "   " ++ fileLine
-    putStrLn $ "..."
-    putChunkLn $
-        (chunk "   ") <> chunk (concat (replicate (col - 2) " ")) <>
-        (chunk "^^^") &
-        fore red &
-        bold
-    printHelp help
-    putStrLn $ "  failed parsing."
+    (time, (eres, input)) <- timeItT $ do
+        input <- readFile inputFile
+        let !eitherres = runParser testParser inputFile input
+        return (eitherres, input) 
+    case eres of
+        (Left errors) -> do
+            let oi = failed inputFile input time errors
+            showFailure oi config
+            showTime oi config
+        (Right ast) -> do 
+            let oi = success inputFile input time ast
+            -- showAst ast config
+            showSuccess oi config
+            showTime oi config
+            -- putStrLn $ replicate 80 '-'
     putStrLn $ replicate 80 '-'
-  where
-    line = fromIntegral . unPos . sourceLine . head $ ps
-    line' = show line
-    col = fromIntegral . unPos . sourceColumn . head $ ps
-    col' = show col
-    help = map toHelp (toAscList customHelp)
-    toHelp (DecFail str) = str
-    toHelp _ = ""
-    printHelp list
-        | null list = return ()
-        | otherwise = putStrLn $ "  parse error: " ++ unlines list
--- bold s = "\\e[1m" ++ s ++ "\\e[0m"
