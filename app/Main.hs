@@ -15,10 +15,10 @@ import System.FilePath.Posix ((</>))
 defaultConfig :: Config
 defaultConfig = Config 
     {
-      parse'      = Just True
-    , showAst'    = Just False 
-    , showResult' = Just False
-    , showTime'   = Just True
+      parse'      = True
+    , showAst'    = False 
+    , showResult' = False
+    , showTime'   = True
     }
 
 -- run all examples

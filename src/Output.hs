@@ -19,10 +19,10 @@ data OutputInfo = OutputInfo {
 }
 
 data Config = Config {
-    parse'      :: Maybe Bool
-  , showAst'    :: Maybe Bool
-  , showResult' :: Maybe Bool
-  , showTime'   :: Maybe Bool
+    parse'      :: Bool
+  , showAst'    :: Bool
+  , showResult' :: Bool
+  , showTime'   :: Bool
 } deriving (Show)
 
 
@@ -38,7 +38,9 @@ showSuccess (OutputInfo fp input _ (Just ast) _) config = do
     putChunk $ (chunk ">> ")
     putChunk $ (chunk "Successfully parsed: ") & fore green
     putChunk $ (chunk fp) & bold
-    print ast
+    if (showAst' config)
+        then print ast
+        else return ()
     putChunkLn $ (chunk " (") <> (chunk . show . length . lines $ input) <> (chunk " lines)") & italic
 
 showFailure :: OutputInfo -> Config -> IO ()
