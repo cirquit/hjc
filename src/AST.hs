@@ -106,7 +106,7 @@ instance ShowJava Expression where
     showJC (LitVar x) = showJC x ++ ";\n"
     showJC (StrArr x) = showJC x
     showJC (IntArr x) = showJC x
-    showJC (LitIdent x) = show x
+    showJC (LitIdent x) = x
     showJC (NewObject id xs) = "new " ++ id ++ "( " ++ concat (intersperse "," (map showJC xs)) ++ " )"
     showJC (IndexGet x x') = showJC x ++ "[" ++ showJC x' ++ "]"
     showJC (MemberGet x id) = showJC x ++ "." ++ id
