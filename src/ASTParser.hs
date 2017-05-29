@@ -63,10 +63,10 @@ ifP :: Parser Statement
 ifP = do
     symbol "if"
     ifexp <- parens expressionP
-    stms <- (braces $ many statementP) <|> many statementP
+    stms <- (braces $ many statementP) <|> (:[]) <$> statementP
     elseexp <-
         optional $
-        symbol "else" *> (braces (many statementP) <|> (many statementP))
+        symbol "else" *> (braces (many statementP) <|> ((:[]) <$> statementP))
     return $ If ifexp stms elseexp
 
 whileP :: Parser Statement

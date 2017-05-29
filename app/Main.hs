@@ -16,7 +16,7 @@ defaultConfig :: Config
 defaultConfig = Config 
     {
       parse'      = True
-    , showAst'    = False 
+    , showAst'    = False
     , showResult' = False
     , showTime'   = True
     , outputDir   = "../output"
@@ -33,7 +33,7 @@ main = do
 -- run single example
 main' :: IO ()
 main' = do
-    let inputFiles = [ "../examples/Add.java" ]
+    let inputFiles = [ "../examples/TreeVisitor.java" ]
     mapM_ (evaluateSLProgram defaultConfig) inputFiles 
 
 -- run examples that should fail (logically, not lexically)

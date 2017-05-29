@@ -30,8 +30,8 @@ data Class = Class
 instance ShowJava Class where
     showJC (Class className extends variables methods) =
         "class " ++ className ++ " extends " ++ extends ++ "{\n"
-        ++ concatMap showJC variables
-        ++ concatMap showJC methods
+        ++ concatMap (\x -> "\t" ++ showJC x ++ ";\n") variables
+        ++ concatMap (\x -> "\t" ++ showJC x ++ "\n") methods
         ++ "}\n"
 
 -- public <type> <name> (<argument>) { <body> }
@@ -44,10 +44,10 @@ data Method = Method
 
 instance ShowJava Method where
     showJC (Method methodName methodRetType methodArguments methodBody) =
-        "\tpublic " ++ showJC methodRetType ++ " " ++ methodName
+        "public " ++ showJC methodRetType ++ " " ++ methodName
         ++ "( " ++ concat (intersperse "," (map showJC methodArguments)) ++ ") {\n"
-        ++ concatMap showJC methodBody
-        ++ "\t}\n"
+        ++ concatMap (\x -> "\t\t" ++ showJC x) methodBody
+        ++ "\t}"
 
 data Statement
     = If Expression
@@ -64,8 +64,8 @@ data Statement
 instance ShowJava Statement where
     showJC (Print x)     = "System.out.print( (char) " ++ (showJC x) ++" );\n"
     showJC (PrintLn x)   = "System.out.println( " ++ (showJC x) ++ " );\n"
-    showJC (BlockStm ss) = "\t{ " ++ concatMap showJC ss ++ "\t}"
-    showJC (StmExp x)    = showJC x
+    showJC (BlockStm ss) = "\t{ " ++ concatMap (\x -> showJC x ++ ";\n") ss ++ "\t}"
+    showJC (StmExp x)    = showJC x ++ ";\n"
     showJC (While x s)   = "while ( " ++ showJC x ++ " ) {\n" ++ concatMap showJC s ++ "\t}\n"
     showJC (If x ss ms)  = "if ( " ++ showJC x ++ " ) {\n" ++ concatMap showJC ss ++ "} " ++ (maybe "\n" mElse ms)
         where mElse xs = "else {\n" ++ concatMap showJC xs ++ "}\n"
@@ -103,7 +103,7 @@ data Expression
 instance ShowJava Expression where
     showJC (LitBool x) = showJC x
     showJC (LitInt x) = showJC x
-    showJC (LitVar x) = showJC x ++ ";\n"
+    showJC (LitVar x) = showJC x
     showJC (StrArr x) = showJC x
     showJC (IntArr x) = showJC x
     showJC (LitIdent x) = x
@@ -111,13 +111,13 @@ instance ShowJava Expression where
     showJC (IndexGet x x') = showJC x ++ "[" ++ showJC x' ++ "]"
     showJC (MemberGet x id) = showJC x ++ "." ++ id
     showJC (MethodGet x id xs) = showJC x ++ "." ++ id ++ "( " ++ concat (intersperse "," (map showJC xs)) ++ " )"
-    showJC (Assign x x') = showJC x ++ " = " ++ showJC x' ++ ";"
+    showJC (Assign x x') = showJC x ++ " = " ++ showJC x'
     showJC (BinOp x b x') = showJC x ++ " " ++ showJC b ++ " " ++ showJC x'
     showJC (UnOp u x) = showJC x
     showJC (Length x) = showJC x ++ ".length"
     showJC This = "this"
     showJC (BlockExp xs) = "( " ++ concat (intersperse "," (map showJC xs)) ++ " )"
-    showJC (Return x) = "return " ++ showJC x ++ ";"
+    showJC (Return x) = "return " ++ showJC x
     showJC (LitStr x) = show x
 
 instance ShowJava Bool where
@@ -171,7 +171,7 @@ data Variable = Variable
     } deriving (Show, Eq)
 
 instance ShowJava Variable where
-    showJC (Variable var name) = showJC var ++ " " ++ name ++ "\n"
+    showJC (Variable var name) = showJC var ++ " " ++ name
 
 data Type
     = IntArrT -- int[]
