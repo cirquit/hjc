@@ -9,7 +9,7 @@ import Output
 
 import Text.Megaparsec
 import Control.Monad (mapM_)
-import System.Directory (listDirectory)
+import System.Directory (listDirectory, createDirectoryIfMissing)
 import System.FilePath.Posix ((</>))
 
 defaultConfig :: Config
@@ -19,6 +19,7 @@ defaultConfig = Config
     , showAst'    = False 
     , showResult' = False
     , showTime'   = True
+    , outputDir   = "../output"
     }
 
 -- run all examples
@@ -45,6 +46,7 @@ main'' = do
 
 evaluateSLProgram :: Config -> FilePath -> IO ()
 evaluateSLProgram config inputFile = do
+    createDirectoryIfMissing True $ outputDir config
     putStrLn $ ">> Starting to lex " ++ inputFile
     (time, (eres, input)) <- timeItT $ do
         input <- readFile inputFile
@@ -60,5 +62,6 @@ evaluateSLProgram config inputFile = do
             -- showAst ast config
             showSuccess oi config
             showTime oi config
+            writeJavaOutput oi config
             -- putStrLn $ replicate 80 '-'
     putStrLn $ replicate 80 '-'

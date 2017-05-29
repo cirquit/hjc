@@ -7,7 +7,9 @@ import Data.Set (toAscList)
 import Rainbow
 import Data.List.NonEmpty (head)
 import System.CPUTime
+import System.FilePath.Posix ((</>))
 import AST
+import qualified Data.List.Split as LS
 
 
 data OutputInfo = OutputInfo {
@@ -23,6 +25,7 @@ data Config = Config {
   , showAst'    :: Bool
   , showResult' :: Bool
   , showTime'   :: Bool
+  , outputDir   :: FilePath
 } deriving (Show)
 
 
@@ -92,3 +95,9 @@ timeItT ioa = do
         t = fromIntegral (t2-t1) * 1e-8
     return (t, a)
 
+writeJavaOutput :: OutputInfo -> Config -> IO ()
+writeJavaOutput (OutputInfo inputName _ _ (Just ast) _) (Config _ _ _ _ path) = do
+    let _ : name : _ = reverse <$> (LS.splitOneOf "./" $ reverse inputName)
+    let outputName = path </> (name ++ "-output.java")
+    let result = showJC ast
+    writeFile outputName result
