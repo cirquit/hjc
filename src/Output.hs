@@ -13,6 +13,7 @@ import qualified Data.List.Split       as LS
 import           Control.Lens
 
 import           AST
+import           Config
 import           TypeCheck.TCCore                    (TypeScope(), TypeError(..), successful, errors)
 
 
@@ -25,24 +26,10 @@ data OutputInfo = OutputInfo {
   , typescope   :: Maybe TypeScope
 }
 
-data TypeErrorLevel = 
-     Silently
-   | FirstError
-   | AllErrors
-   deriving (Enum, Show)
-
-data Config = Config {
-    parse'      :: Bool
-  , showAst'    :: Bool
-  , showResult' :: Bool
-  , showTime'   :: Bool 
-  , outputDir   :: FilePath
-  , typeErrLvl  :: TypeErrorLevel
-} deriving (Show)
-
 
 success :: FilePath -> String -> Double -> MiniJava -> TypeScope -> OutputInfo
 success fp i t ast ts = OutputInfo fp i t (Just ast) Nothing (Just ts)
+
 
 failed :: FilePath -> String -> Double -> ParseError Char Dec -> OutputInfo
 failed fp i t e       = OutputInfo fp i t Nothing    (Just e) Nothing
@@ -134,8 +121,11 @@ showFailure (OutputInfo fp _ _ _ (Just (ParseError ps unexpected expected custom
 
 showTime :: OutputInfo -> Config -> IO ()
 showTime oi config = do
-    putChunk $ (chunk ">> Elapsed time: ") <> (chunk $ show (timeS oi)) <> (chunk "ms\n") & italic
+    putChunk $ (chunk ">> Finished in: ") <> (chunk $ show (timeS oi)) <> (chunk "ms\n") & italic
 
+
+showTimeFin :: Double -> IO ()
+showTimeFin t = putChunk $ (chunk " Finished in: ") <> (chunk $ show t) <> (chunk "ms\n") & italic
 
 -- |Wrap an 'IO' computation so that it returns execution time is seconds as well as the real value.
 timeItT :: IO a -> IO (Double, a)
