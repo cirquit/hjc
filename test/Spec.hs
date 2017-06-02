@@ -18,3 +18,12 @@ main = hspec $ do
 
         it "should use the whole dir as input" $ do
             runParser cmdP "" ".././examples/z_ShouldFail/ParseError --tall --dir" `shouldBe` (Right (CmdParam {path = ".././examples/z_ShouldFail/ParseError", typeErrLvl' = AllErrors, wholeDir = True}))
+
+        it "should take tall as typeErrLevel" $ do
+            runParser cmdP "" ". --tall" `shouldBe` (Right (CmdParam {path = ".", typeErrLvl' = AllErrors, wholeDir = False}))
+
+        it "should take tfirst as typeErrLevel" $ do
+            runParser cmdP "" ". --tfirst" `shouldBe` (Right (CmdParam {path = ".", typeErrLvl' = FirstError, wholeDir = False}))
+
+        it "should take tsilent as typeErrLevel" $ do
+            runParser cmdP "" ". --tsilent" `shouldBe` (Right (CmdParam {path = ".", typeErrLvl' = Silently, wholeDir = False}))
