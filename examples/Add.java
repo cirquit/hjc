@@ -4,12 +4,12 @@ class Add {
     }
 }
 
-class Test extends Blub {
+class Test  {
     int[] x;
-    Blub t;
 
-    public Blub add(Blub b){
-     if ( return 1 ){
+    public int add(int b){
+     Test t = new Test(a, b);
+     if ( true ){
 
      }
      return 1;

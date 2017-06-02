@@ -1,6 +1,7 @@
 module TypeCheck.TypeCheck where
 
 import qualified Data.Map                   as Map
+import qualified Data.List                  as DL  (intercalate)
 import           Control.Monad.Trans.State
 import           Control.Monad.IO.Class
 import           Control.Lens
@@ -111,8 +112,54 @@ checkPrint :: Expression -> StateT TypeScope IO ()
 checkPrint exp = return ()
 
 checkExpression :: Expression -> StateT TypeScope IO ()
-checkExpression exp = return ()
+checkExpression exp = return () -- appendError $ return $ "boom @ " ++ showJC exp-- return ()
 
+unify :: Expression -> StateT TypeScope IO Type
+unify (LitBool _)   = return BoolT
+unify (LitInt  _)   = return IntT
+unify (LitVar var)  = return $ _type var
+unify (LitStr _)    = return StringT
+unify (LitIdent id) = return $ IdT id
+unify (StrArr expr) = returnIfMatched StringArrT <$> (expr `shouldBeType` IntT) 
+unify (IntArr expr) = returnIfMatched IntArrT    <$> (expr `shouldBeType` IntT)
+unify (NewObject id xs) = do
+   mtype <- lookupType id 
+   case mtype of
+        Nothing  -> do
+            appendError . return $ "class \"" ++ id ++ "\" is undefined in object instantiation" 
+            return objectType 
+        (Just t) -> do
+            when (not . null $ xs) $ do
+                appendError . return $ "class \"" ++ id ++ "\" does not have any constructors with arguments than by MiniJava definition"
+            return t
+
+unify (IndexGet call ix) = do
+    callType <- snd <$> call `shouldBeTypes` [IntArrT, StringArrT]
+    ix `shouldBeType_` IntT
+    return callType
+
+unify This = IdT <$> curClassName
+
+unify (UnOp unp expr) = do
+    case unp of
+        NOT -> returnIfMatched BoolT <$> expr `shouldBeType` BoolT
+        _   -> do
+            appendError . return $ "unary operator has no defined typechecking rules, please update the TypeCheck.unify"
+            return objectType
+
+-- unify 
+-- unify (MemberGet x id) = showJC x ++ "." ++ id
+-- unify (MethodGet x id xs) = showJC x ++ "." ++ id ++ "( " ++ concat (intersperse "," (map showJC xs)) ++ " )"
+-- unify (Assign x x') = showJC x ++ " = " ++ showJC x'
+-- unify (BinOp x b x') = showJC x ++ " " ++ showJC b ++ " " ++ showJC x'
+
+-- unify (BlockExp xs) = "( " ++ concat (intersperse "," (map showJC xs)) ++ " )"
+-- unify (Return x) = "return " ++ showJC x
+-- unify (LitStr x) = show x
+
+
+-- | main unification 
+--
 shouldBeType :: Expression -> Type -> StateT TypeScope IO Bool
 shouldBeType expr t = do
     ut <- unify expr
@@ -121,34 +168,24 @@ shouldBeType expr t = do
         appendError . return $ "type \"" ++ showJC ut ++ "\" does not match expected type \"" ++ showJC t ++ "\" in expression:\n\n         " ++ showJC expr ++ "\n"
     return same
 
+
+shouldBeTypes :: Expression -> [Type] -> StateT TypeScope IO (Bool, Type)
+shouldBeTypes expr ts = do
+    ut <- unify expr
+    let defined = ut `elem` ts
+    if (not defined)
+        then do
+            appendError . return $ "type  \"" ++ showJC ut ++ "\" does not match expected types \"" ++ (DL.intercalate ", " $ map showJC ts) ++ "\" in expression:\n\n         " ++ showJC expr ++ "\n"
+            return (defined, objectType)
+        else do
+            return (defined, ut) 
+
 shouldBeType_ :: Expression -> Type -> StateT TypeScope IO ()
 shouldBeType_ e t = shouldBeType e t >> return ()
 
-unify :: Expression -> StateT TypeScope IO Type
-unify (LitBool _)   = return BoolT
-unify (LitInt  _)   = return IntT
-unify (LitVar var)  = return $ _type var
-unify (LitStr _)    = return StringT
-unify (LitIdent id) = return $ IdT id
-unify (StrArr e)    = do
-    match <- e `shouldBeType` IntT
-    if match
-        then return StringArrT
-        else return objectType
-unify (IntArr e)    = do
-    match <- e `shouldBeType` IntT
-    if match
-        then return IntArrT
-        else return objectType
--- unify (NewObject id xs) = "new " ++ id ++ "( " ++ concat (intersperse "," (map showJC xs)) ++ " )"
--- unify (IndexGet x x') = showJC x ++ "[" ++ showJC x' ++ "]"
--- unify (MemberGet x id) = showJC x ++ "." ++ id
--- unify (MethodGet x id xs) = showJC x ++ "." ++ id ++ "( " ++ concat (intersperse "," (map showJC xs)) ++ " )"
--- unify (Assign x x') = showJC x ++ " = " ++ showJC x'
--- unify (BinOp x b x') = showJC x ++ " " ++ showJC b ++ " " ++ showJC x'
--- unify (UnOp u x) = showJC x
--- unify (Length x) = showJC x ++ ".length"
--- unify This = "this"
--- unify (BlockExp xs) = "( " ++ concat (intersperse "," (map showJC xs)) ++ " )"
--- unify (Return x) = "return " ++ showJC x
--- unify (LitStr x) = show x
+shouldBeTypes_ :: Expression -> [Type] -> StateT TypeScope IO ()
+shouldBeTypes_ e ts = shouldBeTypes e ts >> return ()
+
+returnIfMatched :: Type -> Bool -> Type
+returnIfMatched t True  = t
+returnIfMatched t False = objectType

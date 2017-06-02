@@ -106,3 +106,12 @@ podClass t = ClassSymbols
       , _varSymbols = []
       , _metSymbols = Map.empty
     }
+
+podArrayClass :: Type -> ClassSymbols
+podArrayClass t = ClassSymbols
+    {
+        _extendsSym = Just objectIdentifier
+      , _classType = t
+      , _varSymbols = [ Variable IntT "length" ]
+      , _metSymbols = Map.empty
+    }
