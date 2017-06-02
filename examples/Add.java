@@ -4,11 +4,14 @@ class Add {
     }
 }
 
-class Test{
+class Test extends Blub {
     int[] x;
-    public int add(){
-     // d = image.blur().blur().blur(); //.printPPM();
+    Blub t;
 
-     b = x.test().run1().run1.run2().run;
+    public Blub add(Blub b){
+     if ( return 1 ){
+
+     }
+     return 1;
     }
 }

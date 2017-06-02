@@ -6,6 +6,8 @@ import AST
 import ASTParser
 import Lexer
 import Output
+import SymbolTable
+import TypeCheck.TypeCheck
 
 import Text.Megaparsec
 import Control.Monad (mapM_)
@@ -20,6 +22,7 @@ defaultConfig = Config
     , showResult' = False
     , showTime'   = True
     , outputDir   = "../output"
+    , typeErrLvl  = AllErrors -- FirstError -- Silently 
     }
 
 -- run all examples
@@ -33,7 +36,7 @@ main = do
 -- run single example
 main' :: IO ()
 main' = do
-    let inputFiles = [ "../examples/TreeVisitor.java" ]
+    let inputFiles = [ "../examples/Add.java" ]
     mapM_ (evaluateSLProgram defaultConfig) inputFiles 
 
 -- run examples that should fail (logically, not lexically)
@@ -58,10 +61,17 @@ evaluateSLProgram config inputFile = do
             showFailure oi config
             showTime oi config
         (Right ast) -> do 
-            let oi = success inputFile input time ast
-            -- showAst ast config
+
+            (ttime, typescope) <- timeItT $ typecheck ast
+
+            let oi = success inputFile input (ttime + time) ast typescope
+
+            -- std out
             showSuccess oi config
+            showTypeScope oi config
             showTime oi config
+
+            -- parsing ast to java
             writeJavaOutput oi config
-            -- putStrLn $ replicate 80 '-'
+
     putStrLn $ replicate 80 '-'

@@ -34,7 +34,9 @@ brackets :: Parser a -> Parser a
 brackets = between (symbol "[") (symbol "]")
 
 stringLiteral :: Parser String
-stringLiteral = char '"' >> manyTill L.charLiteral (char '"')
+stringLiteral = between (symbol "\"") (symbol "\"") (many L.charLiteral)
+
+-- char '"' >> manyTill L.charLiteral (char '"')
 
 -- | 'integer' parses an integer.
 integer :: Parser Integer
