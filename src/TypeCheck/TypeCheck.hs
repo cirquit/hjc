@@ -44,7 +44,7 @@ checkExtention id = do
     when (not exists) $ appendError extendsError
   where
     extendsError = do
-        return $ "Undefined extended class " ++ "\"" ++ id ++ "\"" 
+        return $ printf "Undefined extended class \"%s\"" id
 
 checkVariable :: Variable -> StateT TypeScope IO ()
 checkVariable (Variable varType name) = do
@@ -54,7 +54,7 @@ checkVariable (Variable varType name) = do
   where
     typeNotDefinedError = do
         let id = showJC varType
-        return $ "Undefined type " ++ "\"" ++ id ++ "\" in definiton of variable " ++ "\"" ++ name ++ "\""
+        return $ printf "Undefined type \"%s\" in definiton of variable \"%s\"" id name
 
 checkReturnType :: Type -> StateT TypeScope IO ()
 checkReturnType VoidT = return ()
@@ -65,7 +65,7 @@ checkReturnType rtype = do
   where
     typeNotDefinedError = do
         let id = showJC rtype
-        return $ "Undefined type " ++ "\"" ++ id ++ "\" in the return type"
+        return $ printf "Undefined type \"%s\" in the return type" id
 
 
 checkMethod :: Method -> StateT TypeScope IO ()
@@ -120,7 +120,7 @@ shouldBeType expr t = do
     ut <- unify expr
     let same = ut == t
     when (not same) $ do
-        appendError . return $ "type \"" ++ showJC ut ++ "\" does not match expected type \"" ++ showJC t ++ "\" in expression:\n\n         " ++ showJC expr ++ "\n"
+        appendError . return $ printf "type \"%s\" does not match expected type \"%s\" in expression:\n\n\"         %s\n" (showJC ut) (showJC t) (showJC expr)
     return same
 
 shouldBeType_ :: Expression -> Type -> StateT TypeScope IO ()
