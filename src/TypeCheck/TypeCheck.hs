@@ -11,6 +11,7 @@ import qualified SymbolTable   as ST
 import           AST
 import           TypeCheck.TCCore
 import           Text.Printf
+import           TypeCheck.ErrorMsgs
 
 -- | main intro function
 --
@@ -41,10 +42,7 @@ checkClass c@(Class name extends vars mets) = do
 checkExtention :: Identifier -> StateT TypeScope IO ()
 checkExtention id = do
     exists <- classExists id
-    when (not exists) $ appendError extendsError
-  where
-    extendsError = do
-        return $ "undefined extended class " ++ "\"" ++ id ++ "\"" 
+    when (not exists) $ undefinedExtendedsClassError id
 
 checkVariable :: Variable -> StateT TypeScope IO ()
 checkVariable (Variable varType name) = do
@@ -268,6 +266,5 @@ binOpUnify (BinOp lhs binop rhs) = do
     checkBinOpType :: BinaryOp -> [Type] -> Expression -> Expression -> StateT TypeScope IO ()
     checkBinOpType binop allowedTypes lhs rhs = do
             (defined, lhsT) <- lhs `shouldBeTypes` allowedTypes
-            when (not defined) $ do
-                appendError . return $ "operator " ++ showJC binop ++ " is not defined for type \"" ++ showJC lhsT ++ "\", allowed types are \"" ++ DL.intercalate ", " (map showJC allowedTypes) ++ "\"" 
-            when (defined) $ rhs `shouldBeType_` lhsT
+            when (not defined) $ operatorTypeMismatchError binop lhsT allowedTypes
+            when (defined)     $ rhs `shouldBeType_` lhsT

@@ -24,7 +24,7 @@ class Blub {
 
     boolean x;
 
-    public boolean huehue(){
+    public void huehue(){
 
         t = new Test();
         x = t.add(1);

@@ -63,14 +63,6 @@ successful ts = null $ _errors ts
 -- |
 
 
--- | helper to save the current scope with the class and method
---   where the error happend
---
-appendError :: StateT TypeScope IO String -> StateT TypeScope IO ()
-appendError errMsg = do
-    error <- TypeError <$> curClassName <*> curMethodName <*> errMsg
-    errors %= (++ [error])
-
 
 resetClassScope :: StateT TypeScope IO ()
 resetClassScope = do
