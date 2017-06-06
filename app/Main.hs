@@ -24,7 +24,7 @@ defaultConfig :: Config
 defaultConfig = Config 
     {
       parse'      = True
-    , showAst'    = False
+    , showAst'    = True
     , showResult' = False
     , showTime'   = True
     , outputDir   = "../output"
@@ -86,7 +86,7 @@ evaluateSLProgram config inputFile = do
 
             -- std out
             showSuccess oi config
-            showTypeScope oi config
+            -- showTypeScope oi config
             showTime oi config
 
             -- parsing ast to java

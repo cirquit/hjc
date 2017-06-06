@@ -1,7 +1,11 @@
 module SymbolTable where
 
-import AST
-import qualified Data.Map as Map
+import qualified Data.Map      as Map
+import           Data.List               (find)
+import           Control.Lens
+import           Debug.Trace (trace)
+
+import           AST
 
 type MiniJavaTable = Map.Map Identifier ClassSymbols
 type MethodTable   = Map.Map Identifier MethodSymbols
@@ -18,6 +22,26 @@ data MethodSymbols = MethodSymbols
       , _arguments   :: [Variable]
     } deriving (Eq, Show)
 
+-- | lens boilerplate
+--
+extendsSym :: Lens' ClassSymbols (Maybe Identifier)
+extendsSym = lens _extendsSym (\x y -> x { _extendsSym = y })
+
+classType :: Lens' ClassSymbols Type
+classType = lens _classType (\x y -> x { _classType = y })
+
+varSymbols :: Lens' ClassSymbols [Variable]
+varSymbols = lens _varSymbols (\x y -> x { _varSymbols = y })
+
+metSymbols :: Lens' ClassSymbols MethodTable 
+metSymbols = lens _metSymbols (\x y -> x { _metSymbols = y })
+
+returnType :: Lens' MethodSymbols Type
+returnType = lens _returnType (\x y -> x { _returnType = y })
+
+arguments :: Lens' MethodSymbols [Variable]
+arguments = lens _arguments (\x y -> x { _arguments = y })
+
 -- | object and all PODs are the default classes
 --
 defaultMJTable :: MiniJavaTable
@@ -26,10 +50,10 @@ defaultMJTable = foldl (\m (id,cls) -> Map.insert id cls m) Map.empty defaultCla
         defaultClasses = 
            [ (objectIdentifier, objectClass)
            , (intIdentifier   , podClass IntT)
-           , (intArrIdentifier, podClass IntArrT)
            , (strIdentifier   , podClass StringT)
-           , (strArrIdentifier, podClass StringArrT)
            , (boolIdentifier  , podClass BoolT)
+           , (intArrIdentifier, podArrayClass IntArrT)
+           , (strArrIdentifier, podArrayClass StringArrT)
            ]
 
 createSymbolTable :: MiniJava -> MiniJavaTable
@@ -66,6 +90,18 @@ classExistsIn id table =
 
 lookupType :: Identifier -> MiniJavaTable -> Maybe Type
 lookupType id table = _classType <$> Map.lookup id table
+
+lookupClassSymbols :: Identifier -> MiniJavaTable -> Maybe ClassSymbols
+lookupClassSymbols id table = Map.lookup id table
+
+lookupMethodSymbols :: Identifier -> ClassSymbols -> Maybe MethodSymbols
+lookupMethodSymbols id cls = Map.lookup id (view metSymbols cls)
+
+
+-- | reverse the variable list to get the "newest" definition of a variable
+--
+getGlobalMemberType :: Identifier -> ClassSymbols -> Maybe Type
+getGlobalMemberType id cls = _type <$> (find (\v -> _variableName v == id) . reverse $ view varSymbols cls)
 
 -- | default classes
 --
@@ -115,3 +151,4 @@ podArrayClass t = ClassSymbols
       , _varSymbols = [ Variable IntT "length" ]
       , _metSymbols = Map.empty
     }
+

@@ -6,6 +6,7 @@ import           Control.Monad.Trans.State
 import           Control.Monad.IO.Class
 import           Control.Lens
 import           Data.Maybe (fromJust)
+import           Control.Applicative --
 
 import           AST
 import qualified SymbolTable as ST
@@ -70,6 +71,7 @@ appendError errMsg = do
     error <- TypeError <$> curClassName <*> curMethodName <*> errMsg
     errors %= (++ [error])
 
+
 resetClassScope :: StateT TypeScope IO ()
 resetClassScope = do
    scope     .= Map.empty
@@ -93,16 +95,60 @@ classExists id = do
     mjt <- view symbols <$> get
     return $ id `ST.classExistsIn` mjt
 
-lookupType :: Identifier -> StateT TypeScope IO (Maybe Type)
-lookupType id = do
+-- | by id
+--
+lookupTypeById :: Identifier -> StateT TypeScope IO (Maybe Type)
+lookupTypeById id = do
     mjt <- view symbols <$> get
     return $ id `ST.lookupType` mjt
+
+lookupClassSymbolsById :: Identifier -> StateT TypeScope IO (Maybe ST.ClassSymbols)
+lookupClassSymbolsById id = do
+    mjt <- view symbols <$> get
+    return $ id `ST.lookupClassSymbols` mjt
+
+-- |                    class id       method id
+--
+lookupMethodSymbolsById :: Identifier -> Identifier -> StateT TypeScope IO (Maybe ST.MethodSymbols)
+lookupMethodSymbolsById cid mid = (>>= ST.lookupMethodSymbols mid) <$> lookupClassSymbolsById cid
+
+-- | prefer local scope over global scope - this is used to implement shadowing
+--
+lookupVarType :: Identifier -> StateT TypeScope IO (Maybe Type)
+lookupVarType id = do
+    mtypeLS <- getLocalMemberType id 
+    mtypeGS <- (\cls -> getGlobalMemberType cls id) =<< curClassType
+    return $ mtypeLS <|> mtypeGS
+
+-- | TODO:
+--
+--      lookup in extended classes
+--
+getGlobalMemberType :: Type -> Identifier -> StateT TypeScope IO (Maybe Type)
+getGlobalMemberType t id = (>>= ST.getGlobalMemberType id) <$> lookupClassSymbols t 
+
+getLocalMemberType :: Identifier -> StateT TypeScope IO (Maybe Type)
+getLocalMemberType id = Map.lookup id . view scope <$> get
+
+-- | by type
+--
+lookupType :: Type -> StateT TypeScope IO (Maybe Type)
+lookupType = lookupTypeById . showJC 
+
+lookupClassSymbols :: Type -> StateT TypeScope IO (Maybe ST.ClassSymbols)
+lookupClassSymbols = lookupClassSymbolsById . showJC
+
+lookupMethodSymbols :: Type -> Identifier -> StateT TypeScope IO (Maybe ST.MethodSymbols)
+lookupMethodSymbols = lookupMethodSymbolsById . showJC
 
 
 -- | valid java code has to be in a class, no need to test on existence
 --
 curClassName :: StateT TypeScope IO Identifier
 curClassName = _className . fromJust . view curClass <$> get
+
+curClassType :: StateT TypeScope IO Type
+curClassType = IdT <$> curClassName
 
 -- | method may not exist, using Maybe Functor
 --

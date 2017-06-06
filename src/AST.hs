@@ -127,7 +127,7 @@ instance ShowJava Integer where
 
 data UnaryOp =
       NOT -- (!)   2
-    | UNDEFINEDOP       -- added to remove overlapping patterns warning in TypeCheck.unify
+    | UNDEFINEDUOP       -- added to remove overlapping patterns warning in TypeCheck.unify
     deriving (Show, Eq)
 
 instance ShowJava UnaryOp where
@@ -147,6 +147,7 @@ data BinaryOp
     | NEQS -- (/=)  6
     | AND -- (&&)  7
     | OR -- (||)  8
+    | UNDEFINEDBOP       -- added to remove overlapping patterns warning in TypeCheck.unify
     deriving (Show, Eq)
 
 instance ShowJava BinaryOp where
@@ -181,6 +182,8 @@ data Type
     | StringT -- String
     | StringArrT -- String[]
     deriving (Show, Eq)
+
+-- TODO Alternative for Type
 
 instance ShowJava Type where
     showJC IntArrT    = "int[]"

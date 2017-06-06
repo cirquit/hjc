@@ -1,11 +1,11 @@
 module TypeCheck.TypeCheck where
 
 import qualified Data.Map                   as Map
-import qualified Data.List                  as DL  (intercalate)
+import qualified Data.List                  as DL  (intercalate, find)
 import           Control.Monad.Trans.State
 import           Control.Monad.IO.Class
 import           Control.Lens
-import           Control.Monad                      (when)
+import           Control.Monad                      (when, zipWithM_)
 
 import qualified SymbolTable   as ST
 import           AST
@@ -43,7 +43,7 @@ checkExtention id = do
     when (not exists) $ appendError extendsError
   where
     extendsError = do
-        return $ "Undefined extended class " ++ "\"" ++ id ++ "\"" 
+        return $ "undefined extended class " ++ "\"" ++ id ++ "\"" 
 
 checkVariable :: Variable -> StateT TypeScope IO ()
 checkVariable (Variable varType name) = do
@@ -53,7 +53,7 @@ checkVariable (Variable varType name) = do
   where
     typeNotDefinedError = do
         let id = showJC varType
-        return $ "Undefined type " ++ "\"" ++ id ++ "\" in definiton of variable " ++ "\"" ++ name ++ "\""
+        return $ "undefined type " ++ "\"" ++ id ++ "\" in definiton of variable " ++ "\"" ++ name ++ "\""
 
 checkReturnType :: Type -> StateT TypeScope IO ()
 checkReturnType VoidT = return ()
@@ -112,18 +112,26 @@ checkPrint :: Expression -> StateT TypeScope IO ()
 checkPrint exp = return ()
 
 checkExpression :: Expression -> StateT TypeScope IO ()
-checkExpression exp = return () -- appendError $ return $ "boom @ " ++ showJC exp-- return ()
+checkExpression exp = unify exp >> return () -- appendError $ return $ "boom @ " ++ showJC exp-- return ()
 
 unify :: Expression -> StateT TypeScope IO Type
 unify (LitBool _)   = return BoolT
 unify (LitInt  _)   = return IntT
-unify (LitVar var)  = return $ _type var
+unify (LitVar var)  = addToScope var >> return (_type var)
 unify (LitStr _)    = return StringT
-unify (LitIdent id) = return $ IdT id
 unify (StrArr expr) = returnIfMatched StringArrT <$> (expr `shouldBeType` IntT) 
 unify (IntArr expr) = returnIfMatched IntArrT    <$> (expr `shouldBeType` IntT)
+unify This          = curClassType
+unify (LitIdent id) = do
+   mtype <- lookupVarType id 
+   case mtype of
+        (Just t) -> return t
+        Nothing  -> do
+            appendError . return $ "identifier \"" ++ id ++ "\" is undefined and thus has no type"
+            return objectType 
+
 unify (NewObject id xs) = do
-   mtype <- lookupType id 
+   mtype <- lookupTypeById id 
    case mtype of
         Nothing  -> do
             appendError . return $ "class \"" ++ id ++ "\" is undefined in object instantiation" 
@@ -134,29 +142,50 @@ unify (NewObject id xs) = do
             return t
 
 unify (IndexGet call ix) = do
-    callType <- snd <$> call `shouldBeTypes` [IntArrT, StringArrT]
+    let allowedTypes = [IntArrT, StringArrT]
+    (defined, callType) <- call `shouldBeTypes` allowedTypes
+    when (not defined) $ do
+        appendError . return $ "operator [] is not defined for type \"" ++ showJC callType ++ "\", allowed types are \"" ++ DL.intercalate ", " (map showJC allowedTypes) 
     ix `shouldBeType_` IntT
     return callType
 
-unify This = IdT <$> curClassName
-
-unify (UnOp unp expr) = do
-    case unp of
+unify (UnOp unop expr) = do
+    case unop of
         NOT -> returnIfMatched BoolT <$> expr `shouldBeType` BoolT
         _   -> do
             appendError . return $ "unary operator has no defined typechecking rules, please update the TypeCheck.unify"
             return objectType
 
--- unify 
--- unify (MemberGet x id) = showJC x ++ "." ++ id
--- unify (MethodGet x id xs) = showJC x ++ "." ++ id ++ "( " ++ concat (intersperse "," (map showJC xs)) ++ " )"
--- unify (Assign x x') = showJC x ++ " = " ++ showJC x'
--- unify (BinOp x b x') = showJC x ++ " " ++ showJC b ++ " " ++ showJC x'
+unify (MemberGet expr id) = do
+    t <- unify expr
+    mtype <- t `getGlobalMemberType` id
+    case mtype of
+        (Just t) -> return t
+        Nothing -> do
+            appendError . return $ "member \"" ++ id ++ "\" is not defined in class \"" ++ showJC t ++ "\" in expression:\n\n         " ++ showJC expr
+            return objectType
 
--- unify (BlockExp xs) = "( " ++ concat (intersperse "," (map showJC xs)) ++ " )"
--- unify (Return x) = "return " ++ showJC x
--- unify (LitStr x) = show x
+unify (Assign lhs rhs)    = do
+    lhsType <- unify lhs
+    returnIfMatched lhsType <$> rhs `shouldBeType` lhsType
 
+unify m@(MethodGet expr id xs) = do
+    callerType <- unify expr
+    mmsymbols <- callerType `lookupMethodSymbols` id
+    case mmsymbols of
+        (Just msymbols) -> do
+            let argTypes = map _type (view ST.arguments msymbols)
+            compareArgumentCount callerType id xs argTypes
+            zipWithM_ shouldBeType xs argTypes
+            return $ view ST.returnType msymbols 
+        Nothing         -> do
+            appendError . return $ "method \"" ++ showJC callerType ++ "." ++ id ++ "\" does not exists in the class \"" ++ showJC callerType ++"\""
+            return objectType
+
+-- return objectType -- showJC x ++ "." ++ id ++ "( " ++ concat (intersperse "," (map showJC xs)) ++ " )"
+unify b@(BinOp _ _ _) = binOpUnify b -- showJC x ++ " " ++ showJC b ++ " " ++ showJC x'
+unify (BlockExp xs)   = return objectType -- "( " ++ concat (intersperse "," (map showJC xs)) ++ " )"
+unify (Return x)      = return objectType -- "return " ++ showJC x
 
 -- | main unification 
 --
@@ -165,7 +194,7 @@ shouldBeType expr t = do
     ut <- unify expr
     let same = ut == t
     when (not same) $ do
-        appendError . return $ "type \"" ++ showJC ut ++ "\" does not match expected type \"" ++ showJC t ++ "\" in expression:\n\n         " ++ showJC expr ++ "\n"
+        appendError . return $ "type \"" ++ showJC ut ++ "\" does not match expected type \"" ++ showJC t ++ "\" in expression:\n\n         " ++ showJC expr
     return same
 
 
@@ -173,12 +202,9 @@ shouldBeTypes :: Expression -> [Type] -> StateT TypeScope IO (Bool, Type)
 shouldBeTypes expr ts = do
     ut <- unify expr
     let defined = ut `elem` ts
-    if (not defined)
-        then do
-            appendError . return $ "type  \"" ++ showJC ut ++ "\" does not match expected types \"" ++ (DL.intercalate ", " $ map showJC ts) ++ "\" in expression:\n\n         " ++ showJC expr ++ "\n"
-            return (defined, objectType)
-        else do
-            return (defined, ut) 
+    when (not defined) $ do
+            appendError . return $ "type  \"" ++ showJC ut ++ "\" does not match expected types \"" ++ (DL.intercalate ", " $ map showJC ts) ++ "\" in expression:\n\n         " ++ showJC expr
+    return (defined, ut) 
 
 shouldBeType_ :: Expression -> Type -> StateT TypeScope IO ()
 shouldBeType_ e t = shouldBeType e t >> return ()
@@ -189,3 +215,56 @@ shouldBeTypes_ e ts = shouldBeTypes e ts >> return ()
 returnIfMatched :: Type -> Bool -> Type
 returnIfMatched t True  = t
 returnIfMatched t False = objectType
+
+
+-- | dirty - this should be accessible in the global typescope
+--
+--                 CallerType    MethodName    MethodArguments   MethodTypes
+--                       \          |               |             /
+compareArgumentCount :: Type -> Identifier -> [Expression] -> [Type] -> StateT TypeScope IO ()
+compareArgumentCount callerType id xs args = do
+    let argCount = length args
+        xsCount  = length xs
+        equal    = argCount == xsCount
+    when (not equal) $ do
+        appendError . return $
+             "method \"" ++ showJC callerType ++ "." ++ id ++ "\" has  \"" ++ show argCount ++ "\"  arguments, not  \"" ++ show xsCount ++ "\""
+
+
+-- | extensible binop rules unifier
+--
+--   table is sorted the following way:
+--  
+--      [ Operation | Allowed Incoming Types | Return Type ] 
+-- 
+binOpUnify :: Expression -> StateT TypeScope IO Type
+binOpUnify (BinOp lhs binop rhs) = do
+    let binTable = [
+            (MUL,   [IntT],              IntT)
+           ,(DIV,   [IntT],              IntT)
+           ,(MOD,   [IntT],              IntT)
+           ,(PLUS,  [IntT],              IntT)
+           ,(MINUS, [IntT],              IntT)
+           ,(LEQ,   [IntT],              BoolT)
+           ,(LE,    [IntT],              BoolT)
+           ,(GEQ,   [IntT],              BoolT)
+           ,(GE,    [IntT],              BoolT)
+           ,(EQS,   [IntT, BoolT],       BoolT)
+           ,(NEQS,  [IntT, BoolT],       BoolT)
+           ,(AND,   [BoolT],             BoolT)
+           ,(OR,    [BoolT],             BoolT)
+           ]
+    let mrules = DL.find (\(bop, _, _) -> bop == binop) binTable
+    case mrules of
+        (Just (op, incTs, retT)) -> checkBinOpType op incTs lhs rhs >> return retT
+        Nothing               -> do
+            appendError . return $ "binary operator \"" ++ showJC binop ++ "\" has no defined typechecking rules, please update the TypeCheck.unify"
+            return objectType
+
+  where
+    checkBinOpType :: BinaryOp -> [Type] -> Expression -> Expression -> StateT TypeScope IO ()
+    checkBinOpType binop allowedTypes lhs rhs = do
+            (defined, lhsT) <- lhs `shouldBeTypes` allowedTypes
+            when (not defined) $ do
+                appendError . return $ "operator " ++ showJC binop ++ " is not defined for type \"" ++ showJC lhsT ++ "\", allowed types are \"" ++ DL.intercalate ", " (map showJC allowedTypes) ++ "\"" 
+            when (defined) $ rhs `shouldBeType_` lhsT

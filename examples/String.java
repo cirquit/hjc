@@ -10,7 +10,7 @@ class Test{
     {
      str = new String[1];
      str[0] = "Blub!";
-     return str.length();
+     return str.length;
     }
 
     public void test() {}
