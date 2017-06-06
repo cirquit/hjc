@@ -78,7 +78,7 @@ data Expression
     | StrArr Expression
     | IntArr Expression
     | LitIdent Identifier
-    | NewObject Identifier
+    | NewObject Identifier  -- new Id( exps )
                 [Expression]
     | IndexGet Expression
                Expression -- x[expr]
@@ -94,7 +94,6 @@ data Expression
             Expression -- <exp> *,/... <exp>
     | UnOp UnaryOp
            Expression -- ! <exp>
-    | Length Expression
     | This
     | BlockExp [Expression]
     | Return Expression
@@ -114,7 +113,6 @@ instance ShowJava Expression where
     showJC (Assign x x') = showJC x ++ " = " ++ showJC x'
     showJC (BinOp x b x') = showJC x ++ " " ++ showJC b ++ " " ++ showJC x'
     showJC (UnOp u x) = showJC x
-    showJC (Length x) = showJC x ++ ".length"
     showJC This = "this"
     showJC (BlockExp xs) = "( " ++ concat (intersperse "," (map showJC xs)) ++ " )"
     showJC (Return x) = "return " ++ showJC x
@@ -128,7 +126,8 @@ instance ShowJava Integer where
     showJC x = show x
 
 data UnaryOp =
-    NOT -- (!)   2
+      NOT -- (!)   2
+    | UNDEFINEDOP       -- added to remove overlapping patterns warning in TypeCheck.unify
     deriving (Show, Eq)
 
 instance ShowJava UnaryOp where

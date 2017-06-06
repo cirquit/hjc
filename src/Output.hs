@@ -71,7 +71,7 @@ printErrors tes errlvl   = do
     showMethod :: Maybe Identifier -> IO ()
     showMethod (Just mid) = do
         putChunk $ (chunk " : method ")
-        putChunk $ (chunk mid) & italic
+        putChunk $ (chunk mid) & bold
         putChunk $ (chunk ":") <> (chunk "\n") 
     showMethod Nothing    = putChunk $ (chunk ":") <> (chunk "\n")
 

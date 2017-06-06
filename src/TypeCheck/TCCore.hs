@@ -108,5 +108,3 @@ curClassName = _className . fromJust . view curClass <$> get
 --
 curMethodName :: StateT TypeScope IO (Maybe Identifier)
 curMethodName = (_methodName <$>) <$> view curMethod <$> get
-
-
