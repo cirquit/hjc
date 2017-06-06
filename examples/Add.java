@@ -7,13 +7,13 @@ class Add {
 class Test  {
     int[] x;
 
-    public int add(int b){
+    public boolean add(int b){
 
      int y = x.length;
      if ( true == false ){
 
      }
-     return 1;
+     return true;
     }
 }
 
@@ -22,12 +22,12 @@ class Blub {
 
     Test t;
 
-    int x;
+    boolean x;
 
     public boolean huehue(){
 
         t = new Test();
-        x = t.add1(true, 1);
-        return true;
+        x = t.add(1);
+        return new Test().add(1);
     }
 }

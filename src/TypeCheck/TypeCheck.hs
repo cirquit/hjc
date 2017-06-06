@@ -10,6 +10,7 @@ import           Control.Monad                      (when, zipWithM_)
 import qualified SymbolTable   as ST
 import           AST
 import           TypeCheck.TCCore
+import           Text.Printf
 
 -- | main intro function
 --
@@ -64,7 +65,7 @@ checkReturnType rtype = do
   where
     typeNotDefinedError = do
         let id = showJC rtype
-        return $ "Undefined type " ++ "\"" ++ id ++ "\" in the return type"
+        return $ printf "Undefined type \"%s\" in the return type" id
 
 
 checkMethod :: Method -> StateT TypeScope IO ()
@@ -112,7 +113,7 @@ checkPrint :: Expression -> StateT TypeScope IO ()
 checkPrint exp = return ()
 
 checkExpression :: Expression -> StateT TypeScope IO ()
-checkExpression exp = unify exp >> return () -- appendError $ return $ "boom @ " ++ showJC exp-- return ()
+checkExpression exp = unify exp >> return ()
 
 unify :: Expression -> StateT TypeScope IO Type
 unify (LitBool _)   = return BoolT
@@ -121,7 +122,9 @@ unify (LitVar var)  = addToScope var >> return (_type var)
 unify (LitStr _)    = return StringT
 unify (StrArr expr) = returnIfMatched StringArrT <$> (expr `shouldBeType` IntT) 
 unify (IntArr expr) = returnIfMatched IntArrT    <$> (expr `shouldBeType` IntT)
-unify This          = curClassType
+unify  This          = curClassType
+unify (BlockExp xs) = head <$> mapM unify xs  -- check if the assumtion holds that the parser does not allow empty BlockExp
+unify b@(BinOp _ _ _) = binOpUnify b
 unify (LitIdent id) = do
    mtype <- lookupVarType id 
    case mtype of
@@ -182,10 +185,11 @@ unify m@(MethodGet expr id xs) = do
             appendError . return $ "method \"" ++ showJC callerType ++ "." ++ id ++ "\" does not exists in the class \"" ++ showJC callerType ++"\""
             return objectType
 
--- return objectType -- showJC x ++ "." ++ id ++ "( " ++ concat (intersperse "," (map showJC xs)) ++ " )"
-unify b@(BinOp _ _ _) = binOpUnify b -- showJC x ++ " " ++ showJC b ++ " " ++ showJC x'
-unify (BlockExp xs)   = return objectType -- "( " ++ concat (intersperse "," (map showJC xs)) ++ " )"
-unify (Return x)      = return objectType -- "return " ++ showJC x
+unify (Return x) = do
+    retType <- curMethodType
+    x `shouldBeType` retType
+    return retType
+
 
 -- | main unification 
 --
@@ -215,7 +219,6 @@ shouldBeTypes_ e ts = shouldBeTypes e ts >> return ()
 returnIfMatched :: Type -> Bool -> Type
 returnIfMatched t True  = t
 returnIfMatched t False = objectType
-
 
 -- | dirty - this should be accessible in the global typescope
 --

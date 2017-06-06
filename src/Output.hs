@@ -55,10 +55,11 @@ printErrors tes errlvl   = do
     putChunk $ (chunk "        Terminating with ")
     putChunk $ (chunk $ show errCount) & bold
     putChunk $ (chunk $ " " ++ teErrStr ++ ".\n\n")
-    case errlvl of
-        Silently   -> return ()
-        FirstError -> showTE (tes !! 0) 1
-        AllErrors  -> mapM_ (uncurry showTE) (zip tes [1..])
+    case (null tes, errlvl) of
+        (False, Silently  ) -> return ()
+        (False, FirstError) -> showTE (tes !! 0) 1
+        (False, AllErrors ) -> mapM_ (uncurry showTE) (zip tes [1..])
+        (_, _)              -> return ()
   where
     showTE :: TypeError -> Int -> IO ()
     showTE (TypeError c mm msg) i = do
@@ -88,6 +89,8 @@ showSuccess (OutputInfo fp input _ (Just ast) _ _) config = do
 showFailure :: OutputInfo -> Config -> IO ()
 showFailure (OutputInfo fp _ _ _ (Just (ParseError ps unexpected expected customHelp)) _) config = do
     input <- readFile fp
+    print line
+    print (length . lines $ input)
     let fileLine = (lines input) !! (line - 1)
     putStr $ ">> " ++ fp ++ ":"
     putChunk $ (chunk line') <> (chunk (':' : col')) & bold

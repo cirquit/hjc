@@ -154,3 +154,9 @@ curClassType = IdT <$> curClassName
 --
 curMethodName :: StateT TypeScope IO (Maybe Identifier)
 curMethodName = (_methodName <$>) <$> view curMethod <$> get
+
+
+-- | use only in unify, invarinat holds that we can't defined expressions out of methods 
+--
+curMethodType :: StateT TypeScope IO Type
+curMethodType = (fromJust . (_methodRetType <$>)) <$> view curMethod <$> get
