@@ -5,10 +5,12 @@ import           Control.Monad.Trans.State
 import           Control.Monad.IO.Class
 import           Control.Lens
 import           Control.Monad                      (when)
+import           Data.Maybe
 
 import qualified SymbolTable   as ST
 import           AST
 import           TypeCheck.TCCore
+import           Text.Printf
 
 -- | main intro function
 --
@@ -140,15 +142,8 @@ unify (IntArr e)    = do
     if match
         then return IntArrT
         else return objectType
--- unify (NewObject id xs) = "new " ++ id ++ "( " ++ concat (intersperse "," (map showJC xs)) ++ " )"
--- unify (IndexGet x x') = showJC x ++ "[" ++ showJC x' ++ "]"
--- unify (MemberGet x id) = showJC x ++ "." ++ id
--- unify (MethodGet x id xs) = showJC x ++ "." ++ id ++ "( " ++ concat (intersperse "," (map showJC xs)) ++ " )"
--- unify (Assign x x') = showJC x ++ " = " ++ showJC x'
--- unify (BinOp x b x') = showJC x ++ " " ++ showJC b ++ " " ++ showJC x'
--- unify (UnOp u x) = showJC x
--- unify (Length x) = showJC x ++ ".length"
--- unify This = "this"
--- unify (BlockExp xs) = "( " ++ concat (intersperse "," (map showJC xs)) ++ " )"
--- unify (Return x) = "return " ++ showJC x
--- unify (LitStr x) = show x
+unify (Return x) = do
+    (Just retType) <- _methodRetType <$> view curMethod <$> get
+    match <- x `shouldBeType` retType
+    return match
+unify (BlockExp xs) = localScope $ mapM_ unify xs
