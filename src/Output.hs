@@ -89,8 +89,6 @@ showSuccess (OutputInfo fp input _ (Just ast) _ _) config = do
 showFailure :: OutputInfo -> Config -> IO ()
 showFailure (OutputInfo fp _ _ _ (Just (ParseError ps unexpected expected customHelp)) _) config = do
     input <- readFile fp
-    print line
-    print (length . lines $ input)
     let fileLine = (lines input) !! (line - 1)
     putStr $ ">> " ++ fp ++ ":"
     putChunk $ (chunk line') <> (chunk (':' : col')) & bold
