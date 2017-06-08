@@ -25,7 +25,7 @@ library
                      , TypeCheck.TypeCheck
                      , TypeCheck.TCCore
                      , Config
-                     , TypeCheck.ErrorMsg
+                     , TypeCheck.ErrorMsgs
   build-depends:       base         >= 4.7     && < 5
                      , megaparsec   >= 5.2.0   && < 6
                      , containers   >= 0.5.7.1 && < 6
