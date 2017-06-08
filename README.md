@@ -35,4 +35,6 @@ String[]
 void
 ```
 
+### Testing
 
+Tests can be run with `stack test`. To run a specific test file run i.e. `stack test --test-arguments "-m "TypeCheck/TypeCheck""`.
