@@ -137,7 +137,7 @@ strArrIdentifier = showJC StringArrT
 --
 podClass :: Type -> ClassSymbols
 podClass t = ClassSymbols
-    {   _extendsSym = Just objectIdentifier
+    {   _extendsSym = Nothing -- Just objectIdentifier
       , _classType = t
       , _varSymbols = []
       , _metSymbols = Map.empty
@@ -146,7 +146,7 @@ podClass t = ClassSymbols
 podArrayClass :: Type -> ClassSymbols
 podArrayClass t = ClassSymbols
     {
-        _extendsSym = Just objectIdentifier
+        _extendsSym = Nothing -- Just objectIdentifier
       , _classType = t
       , _varSymbols = [ Variable IntT "length" ]
       , _metSymbols = Map.empty

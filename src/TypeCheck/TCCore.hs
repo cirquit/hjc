@@ -99,10 +99,23 @@ lookupClassSymbolsById id = do
     mjt <- view symbols <$> get
     return $ id `ST.lookupClassSymbols` mjt
 
+lookupExtendedClassById :: Identifier -> StateT TypeScope IO (Maybe Type)
+lookupExtendedClassById id = do
+    mjt <- view symbols <$> get
+    let mes = view ST.extendsSym =<< (id `ST.lookupClassSymbols` mjt)
+    case mes of
+         Nothing -> return Nothing
+         (Just es) -> lookupTypeById es
 -- |                    class id       method id
 --
 lookupMethodSymbolsById :: Identifier -> Identifier -> StateT TypeScope IO (Maybe ST.MethodSymbols)
-lookupMethodSymbolsById cid mid = (>>= ST.lookupMethodSymbols mid) <$> lookupClassSymbolsById cid
+lookupMethodSymbolsById cid mid = do
+    mcs <- lookupClassSymbolsById cid
+    mms <- (>>= ST.lookupMethodSymbols mid) <$> pure mcs
+    case (mms, mcs >>= view ST.extendsSym) of
+         (Just ms, Just es) -> return $ Just ms
+         (Nothing, Just es) -> lookupMethodSymbolsById es mid
+         _                  -> return Nothing
 
 -- | prefer local scope over global scope - this is used to implement shadowing
 --
@@ -117,7 +130,7 @@ lookupVarType id = do
 --      lookup in extended classes
 --
 getGlobalMemberType :: Type -> Identifier -> StateT TypeScope IO (Maybe Type)
-getGlobalMemberType t id = (>>= ST.getGlobalMemberType id) <$> lookupClassSymbols t 
+getGlobalMemberType t id = (>>= ST.getGlobalMemberType id) <$> lookupClassSymbols t
 
 getLocalMemberType :: Identifier -> StateT TypeScope IO (Maybe Type)
 getLocalMemberType id = Map.lookup id . view scope <$> get
@@ -129,6 +142,9 @@ lookupType = lookupTypeById . showJC
 
 lookupClassSymbols :: Type -> StateT TypeScope IO (Maybe ST.ClassSymbols)
 lookupClassSymbols = lookupClassSymbolsById . showJC
+
+lookupExtendedClass :: Type -> StateT TypeScope IO (Maybe Type)
+lookupExtendedClass = lookupExtendedClassById . showJC
 
 lookupMethodSymbols :: Type -> Identifier -> StateT TypeScope IO (Maybe ST.MethodSymbols)
 lookupMethodSymbols = lookupMethodSymbolsById . showJC

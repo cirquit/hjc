@@ -60,21 +60,21 @@ printErrors tes errlvl   = do
         (False, FirstError) -> showTE (tes !! 0) 1
         (False, AllErrors ) -> mapM_ (uncurry showTE) (zip tes [1..])
         (_, _)              -> return ()
-  where
-    showTE :: TypeError -> Int -> IO ()
-    showTE (TypeError c mm msg) i = do
-        putChunk $ (chunk "   #") <> (chunk $ show i) & fore red & bold
-        putChunk $ (chunk " class ")
-        putChunk $ (chunk c) & bold
-        showMethod mm
-        putChunk $ (chunk "        ") <> (chunk msg) <> (chunk "\n\n")
 
-    showMethod :: Maybe Identifier -> IO ()
-    showMethod (Just mid) = do
-        putChunk $ (chunk " : method ")
-        putChunk $ (chunk mid) & bold
-        putChunk $ (chunk ":") <> (chunk "\n") 
-    showMethod Nothing    = putChunk $ (chunk ":") <> (chunk "\n")
+showTE :: TypeError -> Int -> IO ()
+showTE (TypeError c mm msg) i = do
+    putChunk $ (chunk "   #") <> (chunk $ show i) & fore red & bold
+    putChunk $ (chunk " class ")
+    putChunk $ (chunk c) & bold
+    showMethod mm
+    putChunk $ (chunk "        ") <> (chunk msg) <> (chunk "\n\n")
+
+showMethod :: Maybe Identifier -> IO ()
+showMethod (Just mid) = do
+    putChunk $ (chunk " : method ")
+    putChunk $ (chunk mid) & bold
+    putChunk $ (chunk ":") <> (chunk "\n") 
+showMethod Nothing    = putChunk $ (chunk ":") <> (chunk "\n")
 
 showSuccess :: OutputInfo -> Config -> IO ()
 showSuccess (OutputInfo fp input _ (Just ast) _ _) config = do

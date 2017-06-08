@@ -194,11 +194,21 @@ unify (Return x) = do
 shouldBeType :: Expression -> Type -> StateT TypeScope IO Bool
 shouldBeType expr t = do
     ut <- unify expr
-    let same = ut == t
+    same <- shouldBeTypeDeep ut t
     when (not same) $ do
         appendError . return $ "type \"" ++ showJC ut ++ "\" does not match expected type \"" ++ showJC t ++ "\" in expression:\n\n         " ++ showJC expr
     return same
 
+
+shouldBeTypeDeep :: Type -> Type -> StateT TypeScope IO Bool
+shouldBeTypeDeep src dst = do
+    let same = src == dst
+    mecs <- lookupExtendedClass src
+
+    case (same, mecs) of
+         (True, _)         -> return same
+         (False, Just ecs) -> shouldBeTypeDeep ecs dst
+         _                 -> return same
 
 shouldBeTypes :: Expression -> [Type] -> StateT TypeScope IO (Bool, Type)
 shouldBeTypes expr ts = do

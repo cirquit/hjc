@@ -3,6 +3,7 @@ module TypeCheck.TypeCheckSpec (main, spec) where
 import ASTParser
 import TypeCheck.TypeCheck
 import qualified TypeCheck.TCCore as T
+import Output (showTE)
 
 import Test.Hspec
 import Test.QuickCheck
@@ -194,6 +195,7 @@ spec = do
             let inputFile = "test/examples/TreeVisitor.java"
             eres <- parseFile inputFile
             typescope <- checkType eres
+            mapM_ (uncurry showTE) $ zip (T._errors typescope) [1..]
             (length $ T._errors typescope) `shouldBe` 0
 
         it "should have zero length of typescope errors While.java" $ do
