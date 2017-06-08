@@ -19,7 +19,7 @@ typecheck ast = snd <$> runStateT (checkMiniJava ast) typescope
     where
         -- | running state
         --
-        typescope :: TypeScope 
+        typescope :: TypeScope
         typescope = createTypeScope symbols
 
         symbols :: ST.MiniJavaTable

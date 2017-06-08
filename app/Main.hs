@@ -21,7 +21,7 @@ import System.FilePath.Posix ((</>))
 import System.Environment
 
 defaultConfig :: Config
-defaultConfig = Config 
+defaultConfig = Config
     {
       parse'      = True
     , showAst'    = False
