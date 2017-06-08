@@ -54,6 +54,9 @@ test-suite hjc-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Spec.hs
+  other-modules:       ASTParserSpec
+                     , ConfigSpec
+                     , TypeCheck.TypeCheckSpec
   build-depends:       base
                      , hjc
                      , megaparsec  >=5.2.0 && < 6
