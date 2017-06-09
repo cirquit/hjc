@@ -46,7 +46,7 @@ checkExtention id = do
 
 checkVariable :: Variable -> StateT TypeScope IO ()
 checkVariable (Variable varType name) = do
-    let id = showJC varType 
+    let id = showJC varType
     exists <- classExists id
     when (not exists) $ appendError typeNotDefinedError
   where
@@ -57,7 +57,7 @@ checkVariable (Variable varType name) = do
 checkReturnType :: Type -> StateT TypeScope IO ()
 checkReturnType VoidT = return ()
 checkReturnType rtype = do
-    let id = showJC rtype 
+    let id = showJC rtype
     exists <- classExists id
     when (not exists) $ appendError typeNotDefinedError
   where
@@ -124,7 +124,7 @@ unify  This          = curClassType
 unify (BlockExp xs) = head <$> mapM unify xs  -- check if the assumtion holds that the parser does not allow empty BlockExp
 unify b@(BinOp _ _ _) = binOpUnify b
 unify (LitIdent id) = do
-   mtype <- lookupVarType id 
+   mtype <- lookupVarType id
    case mtype of
         (Just t) -> return t
         Nothing  -> do
@@ -132,7 +132,7 @@ unify (LitIdent id) = do
             return objectType 
 
 unify (NewObject id xs) = do
-   mtype <- lookupTypeById id 
+   mtype <- lookupTypeById id
    case mtype of
         Nothing  -> do
             appendError . return $ "class \"" ++ id ++ "\" is undefined in object instantiation" 
@@ -146,7 +146,7 @@ unify (IndexGet call ix) = do
     let allowedTypes = [IntArrT, StringArrT]
     (defined, callType) <- call `shouldBeTypes` allowedTypes
     when (not defined) $ do
-        appendError . return $ "operator [] is not defined for type \"" ++ showJC callType ++ "\", allowed types are \"" ++ DL.intercalate ", " (map showJC allowedTypes) 
+        appendError . return $ "operator [] is not defined for type \"" ++ showJC callType ++ "\", allowed types are \"" ++ DL.intercalate ", " (map showJC allowedTypes)
     ix `shouldBeType_` IntT
     return IntT
 
@@ -189,7 +189,7 @@ unify (Return x) = do
     return retType
 
 
--- | main unification 
+-- | main unification
 --
 shouldBeType :: Expression -> Type -> StateT TypeScope IO Bool
 shouldBeType expr t = do
@@ -245,9 +245,9 @@ compareArgumentCount callerType id xs args = do
 -- | extensible binop rules unifier
 --
 --   table is sorted the following way:
---  
+--
 --      [ Operation | Allowed Incoming Types | Return Type ] 
--- 
+--
 binOpUnify :: Expression -> StateT TypeScope IO Type
 binOpUnify (BinOp lhs binop rhs) = do
     let binTable = [
