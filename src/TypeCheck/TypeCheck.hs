@@ -148,7 +148,10 @@ unify (IndexGet call ix) = do
     when (not defined) $ do
         appendError . return $ "operator [] is not defined for type \"" ++ showJC callType ++ "\", allowed types are \"" ++ DL.intercalate ", " (map showJC allowedTypes)
     ix `shouldBeType_` IntT
-    return IntT
+
+    case callType of
+        IntArrT    -> return IntT
+        StringArrT -> return StringT
 
 unify (UnOp unop expr) = do
     case unop of
