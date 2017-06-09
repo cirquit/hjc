@@ -37,4 +37,22 @@ void
 
 ### Testing
 
-Tests can be run with `stack test`. To run a specific test file run i.e. `stack test --test-arguments "-m "TypeCheck/TypeCheck""`.
+* Run tests
+```
+stack test
+```
+
+* Run a specific test file i.e.
+```
+stack test --test-arguments "-m "TypeCheck/TypeCheck""
+```
+
+* Fail fast
+```
+stack test --test-arguments "--fail-fast"
+```
+
+* Run a specific test file, fail fast and filewatch
+```
+stack test --file-watch --test-arguments "-m "TypeCheck/TypeCheck" --fail-fast"
+```
