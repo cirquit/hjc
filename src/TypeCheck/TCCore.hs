@@ -130,7 +130,17 @@ lookupVarType id = do
 --      lookup in extended classes
 --
 getGlobalMemberType :: Type -> Identifier -> StateT TypeScope IO (Maybe Type)
-getGlobalMemberType t id = (>>= ST.getGlobalMemberType id) <$> lookupClassSymbols t
+getGlobalMemberType t id = do
+    mtype <- lookupType t
+    case mtype of
+         (Just t) -> return mtype
+         Nothing   -> do
+            mT <- lookupExtendedClass t
+            case mT of
+                Nothing -> return Nothing
+                (Just eCT) -> getGlobalMemberType eCT id
+    where
+      lookupType ct = (>>= ST.getGlobalMemberType id) <$> lookupClassSymbols ct
 
 getLocalMemberType :: Identifier -> StateT TypeScope IO (Maybe Type)
 getLocalMemberType id = Map.lookup id . view scope <$> get

@@ -198,7 +198,9 @@ varDeclarationP = variableP <* semi
 
 typeP :: Parser Type
 typeP =
-    try (symbol "int[] " *> return IntArrT) <|> symbol "String[] " *> return StringArrT <|>
+    try (symbol "int[] " *> return IntArrT) <|>
+    symbol "String[] " *> return StringArrT <|>
+    symbol "String [] " *> return StringArrT <|>
     symbol "String " *> return StringT <|>
     symbol "int " *> return IntT <|>
     symbol "boolean " *> return BoolT <|>
