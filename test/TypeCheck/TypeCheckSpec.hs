@@ -214,13 +214,6 @@ spec = do
             showErrors typescope
             (length $ T._errors typescope) `shouldBe` 0
 
-        -- it "should have zero length of typescope errors String.java" $ do
-        --     let inputFile = "test/examples/String.java"
-        --     eres <- parseFile inputFile
-        --     typescope <- checkType eres
-        --     showErrors typescope
-        --     (length $ T._errors typescope) `shouldBe` 0
-
         it "should have zero length of typescope errors TreeVisitor.java" $ do
             let inputFile = "test/examples/TreeVisitor.java"
             eres <- parseFile inputFile
