@@ -150,7 +150,7 @@ boolP = symbol "true" *> return True <|> symbol "false" *> return False
 
 opTable =
     [ [ Postfix (flip IndexGet <$> brackets expressionP)
-      , Postfix $ foldr1 (.) <$> some (methodGetP <|> memberGetP)
+      , Postfix $ foldr1 (flip (.)) <$> some (methodGetP <|> memberGetP)
       ]
     , [Prefix (unaryOps [("!", NOT)])]
     , [InfixL (binaryOps [("*", MUL), ("/", DIV), ("%", MOD)])]
@@ -198,9 +198,9 @@ varDeclarationP = variableP <* semi
 
 typeP :: Parser Type
 typeP =
-    try (symbol "int[]" *> return IntArrT) <|> symbol "String[]" *> return StringArrT <|>
-    symbol "String" *> return StringT <|>
-    symbol "int" *> return IntT <|>
-    symbol "boolean" *> return BoolT <|>
-    symbol "void" *> return VoidT <|>
+    try (symbol "int[] " *> return IntArrT) <|> symbol "String[] " *> return StringArrT <|>
+    symbol "String " *> return StringT <|>
+    symbol "int " *> return IntT <|>
+    symbol "boolean " *> return BoolT <|>
+    symbol "void " *> return VoidT <|>
     IdT <$> identifier

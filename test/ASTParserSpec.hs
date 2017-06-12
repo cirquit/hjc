@@ -150,10 +150,10 @@ spec = do
             eres <- parseFile inputFile
             (isRight eres) `shouldBe` True
 
-        it "should have ast in Right of String.java" $ do
-            let inputFile = "test/examples/String.java"
-            eres <- parseFile inputFile
-            (isRight eres) `shouldBe` True
+        -- it "should have ast in Right of String.java" $ do
+        --     let inputFile = "test/examples/String.java"
+        --     eres <- parseFile inputFile
+        --     (isRight eres) `shouldBe` True
 
         it "should have ast in Right of TreeVisitor.java" $ do
             let inputFile = "test/examples/TreeVisitor.java"
