@@ -67,7 +67,7 @@ successful ts = null $ _errors ts
 resetClassScope :: StateT TypeScope IO ()
 resetClassScope = do
    scope     .= Map.empty
-   curClass  .= Nothing 
+   curClass  .= Nothing
    curMethod .= Nothing
 
 -- | reset local variable scope, forward errors
@@ -75,7 +75,7 @@ resetClassScope = do
 localScope :: StateT TypeScope IO a -> StateT TypeScope IO ()
 localScope f = do
     oldScope <- get
-    errors .= [] 
+    errors .= []
     f
     newScope <- get
     put oldScope
@@ -117,11 +117,12 @@ lookupMethodSymbolsById cid mid = do
          (Nothing, Just es) -> lookupMethodSymbolsById es mid
          _                  -> return Nothing
 
+
 -- | prefer local scope over global scope - this is used to implement shadowing
 --
 lookupVarType :: Identifier -> StateT TypeScope IO (Maybe Type)
 lookupVarType id = do
-    mtypeLS <- getLocalMemberType id 
+    mtypeLS <- getLocalMemberType id
     mtypeGS <- (\cls -> getGlobalMemberType cls id) =<< curClassType
     return $ mtypeLS <|> mtypeGS
 

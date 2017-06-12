@@ -150,14 +150,14 @@ unify (LitIdent id) = do
         (Just t) -> return t
         Nothing  -> do
             appendError . return $ "identifier \"" ++ id ++ "\" is undefined and thus has no type"
-            return objectType 
+            return objectType
 
 unify (NewObject id xs) = do
    mtype <- lookupTypeById id
    case mtype of
         Nothing  -> do
             appendError . return $ "class \"" ++ id ++ "\" is undefined in object instantiation" 
-            return objectType 
+            return objectType
         (Just t) -> do
             when (not . null $ xs) $ do
                 appendError . return $ "class \"" ++ id ++ "\" does not have any constructors with arguments than by MiniJava definition"
