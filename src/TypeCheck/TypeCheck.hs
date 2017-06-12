@@ -172,7 +172,6 @@ unify (MemberGet expr id) = do
 
 unify (Assign lhs rhs)    = do
     lhsType <- unify lhs
-    io $ print $ showJC lhsType ++ " : " ++ showJC lhs ++ " = " ++ showJC rhs
     returnIfMatched lhsType <$> rhs `shouldBeType` lhsType
 
 unify m@(MethodGet expr id xs) = do
@@ -183,8 +182,6 @@ unify m@(MethodGet expr id xs) = do
             let argTypes = map _type (view ST.arguments msymbols)
             compareArgumentCount callerType id xs argTypes
             zipWithM_ shouldBeType xs argTypes
-            io $ print $ showJC expr
-
             return $ view ST.returnType msymbols 
         Nothing         -> do
             appendError . return $ "method \"" ++ showJC callerType ++ "." ++ id ++ "\" does not exists in the class \"" ++ showJC callerType ++"\""
