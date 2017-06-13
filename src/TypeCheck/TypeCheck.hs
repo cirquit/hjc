@@ -94,6 +94,8 @@ checkIf :: Statement -> StateT TypeScope IO ()
 checkIf (If exp stms mstms) = do
     isValidIfExpr exp  -- move to parser
     exp `shouldBeType_` BoolT
+    _ <- mapM checkStatement stms
+    checkElse mstms
     return ()
   where
     isValidIfExpr (BlockExp _) = appendError $ return "illegal start of an if expression"
@@ -101,14 +103,33 @@ checkIf (If exp stms mstms) = do
     isValidIfExpr (Return _)   = appendError $ return "illegal start of an if expression"
     isValidIfExpr _            = return ()
 
+checkElse :: Maybe [Statement] -> StateT TypeScope IO ()
+checkElse Nothing = return ()
+checkElse (Just stms) = do
+    mapM_ checkStatement stms
+    return ()
+
 checkWhile :: Statement -> StateT TypeScope IO ()
-checkWhile (While exp stm) =  return ()
+checkWhile (While exp stm) = do
+    isValidIfExpr exp
+    exp `shouldBeType_` BoolT
+    _ <- mapM checkStatement stm
+    return ()
+  where
+    isValidIfExpr (BlockExp _) = appendError $ return "illegal start of an if expression"
+    isValidIfExpr (Assign _ _) = appendError $ return "illegal start of an if expression"
+    isValidIfExpr (Return _)   = appendError $ return "illegal start of an if expression"
+    isValidIfExpr _            = return ()
 
 checkPrintLn :: Expression -> StateT TypeScope IO ()
-checkPrintLn exp = return ()
+checkPrintLn exp = do
+    exp `shouldBeType_` IntT
+    return ()
 
 checkPrint :: Expression -> StateT TypeScope IO ()
-checkPrint exp = return ()
+checkPrint exp = do
+    exp `shouldBeType_` IntT
+    return ()
 
 checkExpression :: Expression -> StateT TypeScope IO ()
 checkExpression exp = unify exp >> return ()
@@ -129,14 +150,14 @@ unify (LitIdent id) = do
         (Just t) -> return t
         Nothing  -> do
             appendError . return $ "identifier \"" ++ id ++ "\" is undefined and thus has no type"
-            return objectType 
+            return objectType
 
 unify (NewObject id xs) = do
    mtype <- lookupTypeById id
    case mtype of
         Nothing  -> do
             appendError . return $ "class \"" ++ id ++ "\" is undefined in object instantiation" 
-            return objectType 
+            return objectType
         (Just t) -> do
             when (not . null $ xs) $ do
                 appendError . return $ "class \"" ++ id ++ "\" does not have any constructors with arguments than by MiniJava definition"

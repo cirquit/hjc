@@ -214,13 +214,6 @@ spec = do
             showErrors typescope
             (length $ T._errors typescope) `shouldBe` 0
 
-        -- it "should have zero length of typescope errors String.java" $ do
-        --     let inputFile = "test/examples/String.java"
-        --     eres <- parseFile inputFile
-        --     typescope <- checkType eres
-        --     showErrors typescope
-        --     (length $ T._errors typescope) `shouldBe` 0
-
         it "should have zero length of typescope errors TreeVisitor.java" $ do
             let inputFile = "test/examples/TreeVisitor.java"
             eres <- parseFile inputFile
@@ -228,13 +221,84 @@ spec = do
             showErrors typescope
             (length $ T._errors typescope) `shouldBe` 0
 
-        it "should have zero length of typescope errors While.java" $ do
-            let inputFile = "test/examples/While.java"
+
+        it "should have typescope errors MethodCallWrong.java" $ do
+            let inputFile = "test/examples/z_ShouldFail/TypeErrors/MethodCallWrong.java"
             eres <- parseFile inputFile
             typescope <- checkType eres
-            showErrors typescope
-            (length $ T._errors typescope) `shouldBe` 0
+            (0 < (length $ T._errors typescope)) `shouldBe` True
 
+        it "should have typescope errors MethodWronglySpelled.java" $ do
+            let inputFile = "test/examples/z_ShouldFail/TypeErrors/MethodWronglySpelled.java"
+            eres <- parseFile inputFile
+            typescope <- checkType eres
+            (0 < (length $ T._errors typescope)) `shouldBe` True
+
+        it "should have typescope errors LinkedListBUG.java" $ do
+            let inputFile = "test/examples/z_ShouldFail/TypeErrors/LinkedListBUG.java"
+            eres <- parseFile inputFile
+            typescope <- checkType eres
+            (0 < (length $ T._errors typescope)) `shouldBe` True
+
+        it "should have typescope errors PrintFirstArg.java" $ do
+            let inputFile = "test/examples/z_ShouldFail/TypeErrors/PrintFirstArg.java"
+            eres <- parseFile inputFile
+            typescope <- checkType eres
+            (0 < (length $ T._errors typescope)) `shouldBe` True
+
+        it "should have typescope errors Shadow.java" $ do
+            let inputFile = "test/examples/z_ShouldFail/TypeErrors/Shadow.java"
+            eres <- parseFile inputFile
+            typescope <- checkType eres
+            (0 < (length $ T._errors typescope)) `shouldBe` True
+
+        it "should have typescope errors TooManyArguments.java" $ do
+            let inputFile = "test/examples/z_ShouldFail/TypeErrors/TooManyArguments.java"
+            eres <- parseFile inputFile
+            typescope <- checkType eres
+            (0 < (length $ T._errors typescope)) `shouldBe` True
+
+        it "should have typescope errors TypeOfArgWrong.java" $ do
+            let inputFile = "test/examples/z_ShouldFail/TypeErrors/TypeOfArgWrong.java"
+            eres <- parseFile inputFile
+            typescope <- checkType eres
+            (0 < (length $ T._errors typescope)) `shouldBe` True
+
+        it "should have typescope errors UndeclaredType.java" $ do
+            let inputFile = "test/examples/z_ShouldFail/TypeErrors/UndeclaredType.java"
+            eres <- parseFile inputFile
+            typescope <- checkType eres
+            (0 < (length $ T._errors typescope)) `shouldBe` True
+
+        it "should have typescope errors UndeclaredVar1.java" $ do
+            let inputFile = "test/examples/z_ShouldFail/TypeErrors/UndeclaredVar1.java"
+            eres <- parseFile inputFile
+            typescope <- checkType eres
+            (0 < (length $ T._errors typescope)) `shouldBe` True
+
+        it "should have typescope errors UndeclaredVar2.java" $ do
+            let inputFile = "test/examples/z_ShouldFail/TypeErrors/UndeclaredVar2.java"
+            eres <- parseFile inputFile
+            typescope <- checkType eres
+            (0 < (length $ T._errors typescope)) `shouldBe` True
+
+        it "should have typescope errors WrongArgumentTypes.java" $ do
+            let inputFile = "test/examples/z_ShouldFail/TypeErrors/WrongArgumentTypes.java"
+            eres <- parseFile inputFile
+            typescope <- checkType eres
+            (0 < (length $ T._errors typescope)) `shouldBe` True
+
+        it "should have typescope errors WrongArgumentTypes2.java" $ do
+            let inputFile = "test/examples/z_ShouldFail/TypeErrors/WrongArgumentTypes2.java"
+            eres <- parseFile inputFile
+            typescope <- checkType eres
+            (0 < (length $ T._errors typescope)) `shouldBe` True
+
+        it "should have typescope errors WrongTypeDeclared.java" $ do
+            let inputFile = "test/examples/z_ShouldFail/TypeErrors/WrongTypeDeclared.java"
+            eres <- parseFile inputFile
+            typescope <- checkType eres
+            (0 < (length $ T._errors typescope)) `shouldBe` True
 
 parseFile inputFile = do
     input <- readFile inputFile
