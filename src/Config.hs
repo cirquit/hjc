@@ -13,12 +13,14 @@ data TypeErrorLevel =
         deriving (Eq, Enum, Show)
 
 data Config = Config {
-    parse'      :: Bool
-    , showAst'    :: Bool
-    , showResult' :: Bool
-    , showTime'   :: Bool
-    , outputDir   :: FilePath
-    , typeErrLvl  :: TypeErrorLevel
+    parse'        :: Bool
+  , showAst'      :: Bool
+  , showResult'   :: Bool
+  , showTime'     :: Bool
+  , compileToCmm  :: Bool
+  , javaOutputDir :: FilePath
+  , cmmOutputDir  :: FilePath
+  , typeErrLvl    :: TypeErrorLevel
 } deriving (Show)
 
 

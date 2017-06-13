@@ -15,7 +15,7 @@ import           Control.Lens
 import           AST
 import           Config
 import           TypeCheck.TCCore                    (TypeScope(), TypeError(..), successful, errors)
-
+import           Cmm.ASTToCmmParser                  (ast2cmms)
 
 data OutputInfo = OutputInfo {
     fileName    :: String
@@ -139,8 +139,16 @@ timeItT ioa = do
     return (t, a)
 
 writeJavaOutput :: OutputInfo -> Config -> IO ()
-writeJavaOutput (OutputInfo inputName _ _ (Just ast) _ _) (Config _ _ _ _ path _) = do
+writeJavaOutput (OutputInfo inputName _ _ (Just ast) _ _) conf = do
     let _ : name : _ = reverse <$> (LS.splitOneOf "./" $ reverse inputName)
-    let outputName = path </> (name ++ "-output.java")
+    let outputName = (javaOutputDir conf) </> (name ++ "-output.java")
     let result = showJC ast
     writeFile outputName result
+
+writeCmmOutput :: OutputInfo -> Config -> IO ()
+writeCmmOutput (OutputInfo inputName _ _ (Just ast) _ _) conf = do
+    let _ : name : _ = reverse <$> (LS.splitOneOf "./" $ reverse inputName)
+    let outputName = (cmmOutputDir conf) </> (name ++ "-cmm.tree")
+    result <- ast2cmms ast
+    writeFile outputName result
+

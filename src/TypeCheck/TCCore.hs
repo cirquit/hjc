@@ -6,10 +6,10 @@ import           Control.Monad.Trans.State
 import           Control.Monad.IO.Class
 import           Control.Lens
 import           Data.Maybe (fromJust)
-import           Control.Applicative --
+import           Control.Applicative
 
 import           AST
-import qualified SymbolTable as ST
+import qualified SymbolTable                  as ST
 
 -- boilerplate
 io :: MonadIO m => IO a -> m a 

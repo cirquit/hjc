@@ -1,6 +1,31 @@
 # hjc
 The Haskell MiniJava Compiler build at the LMU course "Compiler Construction"
 
+
+### To use the C-- Backend
+
+Compile to `name.tree` with a configurable flag (missing).
+Install the tree2c tool:
+
+```
+> git clone https://gitlab.cip.ifi.lmu.de/schoepp/Compilerbau17
+> cd src/tree2c
+> stack build
+> stack install
+```
+
+Check if you have `libc6-dev-i386` or `g++-multilib` or `libc6-dev-i386` package installed.
+In my case, this only worked with `clang-3.8`.
+
+```
+> cd cmm-output
+> tree2c <name>-cmm.tree > <name>.c
+> gcc -m32 <name>.c runtime.c -o <name>
+> ./name
+```
+
+
+
 ### Development
 
 This project is using `stack-1.3.2`.
@@ -30,8 +55,6 @@ else do_something_else();
 
 * additional types allowed
 ```
-String
-String[]
 void
 ```
 

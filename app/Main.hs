@@ -23,12 +23,14 @@ import System.Environment
 defaultConfig :: Config
 defaultConfig = Config
     {
-      parse'      = True
-    , showAst'    = False
-    , showResult' = False
-    , showTime'   = True
-    , outputDir   = "../output"
-    , typeErrLvl  = AllErrors -- FirstError -- Silently 
+      parse'        = True
+    , showAst'      = False
+    , showResult'   = False
+    , showTime'     = True
+    , compileToCmm  = True 
+    , javaOutputDir = "../output"
+    , cmmOutputDir  = "../cmm-output"
+    , typeErrLvl   = AllErrors -- FirstError -- Silently 
     }
 
 -- run all examples
@@ -54,7 +56,7 @@ main = do
 -- run single example
 main' :: IO ()
 main' = do
-    let inputFiles = [ "../examples/Raytrace.java" ]
+    let inputFiles = [ "../examples/Arg.java" ]
     mapM_ (evaluateSLProgram defaultConfig) inputFiles 
 
 -- run examples that should fail (logically, not lexically)
@@ -67,7 +69,8 @@ main'' = do
 
 evaluateSLProgram :: Config -> FilePath -> IO ()
 evaluateSLProgram config inputFile = do
-    createDirectoryIfMissing True $ outputDir config
+    createDirectoryIfMissing True $ javaOutputDir config
+    createDirectoryIfMissing True $ cmmOutputDir config
     putStrLn $ ">> Starting to lex " ++ inputFile
     (time, (eres, input)) <- timeItT $ do
         input <- readFile inputFile
@@ -91,4 +94,6 @@ evaluateSLProgram config inputFile = do
 
             -- parsing ast to java
             writeJavaOutput oi config
+            writeCmmOutput  oi config
+
     putStrLn $ replicate 80 '-'
