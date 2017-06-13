@@ -5,8 +5,7 @@ import Data.List
 import Data.Int
 import Cmm.LabelGenerator
 
-data Cmm = Cmm 
-    { cmmMethods :: [CmmMethod] }
+type Cmm = [CmmMethod]
 
 data CmmMethod = CmmMethod
     { cmmMethodName ::  String
@@ -62,14 +61,11 @@ data CmmRelOp =
 
 
 cmm2str :: Cmm -> String
-cmm2str = show
+cmm2str = intercalate "\n\n" . map show
 
 -- | The following Show instances shold produce tree programs
 --   that are parseable using tree2c.
 --
-instance Show Cmm where
-  show prg = intercalate "\n\n" $ map show (cmmMethods prg)
-
 instance Show CmmMethod where
   show m = cmmMethodName m ++ "(" ++ show (cmmArgLength m) ++ ") {\n  "
            ++ intercalate "\n  " (map show (cmmBody m))
