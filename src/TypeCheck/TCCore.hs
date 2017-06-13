@@ -106,17 +106,28 @@ lookupExtendedClassById id = do
     case mes of
          Nothing -> return Nothing
          (Just es) -> lookupTypeById es
--- |                    class id       method id
+
+-- |                       class id       method id
 --
 lookupMethodSymbolsById :: Identifier -> Identifier -> StateT TypeScope IO (Maybe ST.MethodSymbols)
 lookupMethodSymbolsById cid mid = do
-    mcs <- lookupClassSymbolsById cid
-    mms <- (>>= ST.lookupMethodSymbols mid) <$> pure mcs
-    case (mms, mcs >>= view ST.extendsSym) of
-         (Just ms, Just es) -> return $ Just ms
+    cs  <- lookupClassSymbolsById cid
+    mms <- (>>= ST.lookupMethodSymbols mid) <$> pure cs
+    case (mms, cs >>= view ST.extendsSym) of
+         (Just ms, _)       -> return $ Just ms
          (Nothing, Just es) -> lookupMethodSymbolsById es mid
          _                  -> return Nothing
 
+-- |                       class id        member id
+-- 
+getGlobalMemberTypeById :: Identifier -> Identifier -> StateT TypeScope IO (Maybe Type)
+getGlobalMemberTypeById cid id = do
+   cs  <- lookupClassSymbolsById cid
+   mtype <- (>>= ST.getGlobalMemberType id) <$> pure cs
+   case (mtype, cs >>= view ST.extendsSym) of
+        (Just t,  _)       -> return $ Just t
+        (Nothing, Just es) -> getGlobalMemberTypeById es id
+        _                  -> return Nothing
 
 -- | prefer local scope over global scope - this is used to implement shadowing
 --
@@ -126,22 +137,8 @@ lookupVarType id = do
     mtypeGS <- (\cls -> getGlobalMemberType cls id) =<< curClassType
     return $ mtypeLS <|> mtypeGS
 
--- | TODO:
---
---      lookup in extended classes
---
 getGlobalMemberType :: Type -> Identifier -> StateT TypeScope IO (Maybe Type)
-getGlobalMemberType t id = do
-    mtype <- lookupType t
-    case mtype of
-         (Just t) -> return mtype
-         Nothing   -> do
-            mT <- lookupExtendedClass t
-            case mT of
-                Nothing -> return Nothing
-                (Just eCT) -> getGlobalMemberType eCT id
-    where
-      lookupType ct = (>>= ST.getGlobalMemberType id) <$> lookupClassSymbols ct
+getGlobalMemberType = getGlobalMemberTypeById . showJC
 
 getLocalMemberType :: Identifier -> StateT TypeScope IO (Maybe Type)
 getLocalMemberType id = Map.lookup id . view scope <$> get

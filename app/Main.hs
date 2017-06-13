@@ -56,7 +56,7 @@ main = do
 -- run single example
 main' :: IO ()
 main' = do
-    let inputFiles = [ "../examples/Arg.java" ]
+    let inputFiles = [ "../examples/Add.java" ]
     mapM_ (evaluateSLProgram defaultConfig) inputFiles 
 
 -- run examples that should fail (logically, not lexically)

@@ -70,11 +70,12 @@ spec = do
 
                 let successfulTitle     = "should have zero length of typescope errors in "
                     successfulFileNames = [
-                          "test/examples/z_ShouldFail/Inheritance/EulerOO.java"
-                        , "test/examples/z_ShouldFail/Inheritance/NewtonOO.java"
-                        , "test/examples/z_ShouldFail/Inheritance/PrimesOO.java"
-                        , "test/examples/z_ShouldFail/Inheritance/QuickSortOO.java"
-                        , "test/examples/z_ShouldFail/Inheritance/TreeVisitor.java"
+                          "test/examples/Inheritance/EulerOO.java"
+                        , "test/examples/Inheritance/NewtonOO.java"
+                        , "test/examples/Inheritance/PrimesOO.java"
+                        , "test/examples/Inheritance/QuickSortOO.java"
+                        , "test/examples/Inheritance/TreeVisitor.java"
+                        , "test/examples/Inheritance/AnimalInheritance.java"
                         ]    
                     testList            = zip successfulFileNames (iterate id successfulTitle)
 

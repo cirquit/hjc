@@ -94,31 +94,23 @@ checkIf :: Statement -> StateT TypeScope IO ()
 checkIf (If exp stms mstms) = do
     isValidIfExpr exp  -- move to parser
     exp `shouldBeType_` BoolT
-    _ <- mapM checkStatement stms
-    checkElse mstms
-    return ()
+    mapM_ checkStatement stms
+    mapM_ checkStatement (maybe [] id mstms)
   where
     isValidIfExpr (BlockExp _) = appendError $ return "illegal start of an if expression"
     isValidIfExpr (Assign _ _) = appendError $ return "illegal start of an if expression"
     isValidIfExpr (Return _)   = appendError $ return "illegal start of an if expression"
     isValidIfExpr _            = return ()
 
-checkElse :: Maybe [Statement] -> StateT TypeScope IO ()
-checkElse Nothing = return ()
-checkElse (Just stms) = do
-    mapM_ checkStatement stms
-    return ()
-
 checkWhile :: Statement -> StateT TypeScope IO ()
 checkWhile (While exp stm) = do
     isValidIfExpr exp
     exp `shouldBeType_` BoolT
-    _ <- mapM checkStatement stm
-    return ()
+    mapM_ checkStatement stm
   where
-    isValidIfExpr (BlockExp _) = appendError $ return "illegal start of an if expression"
-    isValidIfExpr (Assign _ _) = appendError $ return "illegal start of an if expression"
-    isValidIfExpr (Return _)   = appendError $ return "illegal start of an if expression"
+    isValidIfExpr (BlockExp _) = appendError $ return "illegal start of a while expression"
+    isValidIfExpr (Assign _ _) = appendError $ return "illegal start of a while expression"
+    isValidIfExpr (Return _)   = appendError $ return "illegal start of a while expression"
     isValidIfExpr _            = return ()
 
 checkPrintLn :: Expression -> StateT TypeScope IO ()
@@ -182,12 +174,11 @@ unify (UnOp unop expr) = do
             return objectType
 
 unify (MemberGet expr id) = do
-    t <- unify expr
+    t     <- unify expr
     mtype <- t `getGlobalMemberType` id
     case mtype of
-        (Just t) -> do
-            return t
-        Nothing -> do
+        (Just t) -> return t
+        Nothing  -> do
             appendError . return $ "member \"" ++ id ++ "\" is not defined in class \"" ++ showJC t ++ "\" in expression:\n\n         " ++ showJC expr
             return objectType
 
@@ -229,11 +220,10 @@ shouldBeTypeDeep :: Type -> Type -> StateT TypeScope IO Bool
 shouldBeTypeDeep src dst = do
     let same = src == dst
     mecs <- lookupExtendedClass src
-
     case (same, mecs) of
          (True, _)         -> return same
          (False, Just ecs) -> shouldBeTypeDeep ecs dst
-         _                 -> return same
+         _                 -> return False
 
 shouldBeTypes :: Expression -> [Type] -> StateT TypeScope IO (Bool, Type)
 shouldBeTypes expr ts = do
