@@ -4,17 +4,13 @@
  -}
 module Cmm.LabelGenerator (
   Temp, Label, mkLabel, mkNamedTemp,
-  labelDefaultState
---  MonadNameGen(..),
---  NameGen, runNameGen,
---  NameGenT, runNameGenT
+  MonadNameGen(..),
+  NameGen, runNameGen,
+  NameGenT, runNameGenT
   ) where
 
 import Control.Monad.State
 import Control.Monad.Identity
-
-labelDefaultState :: ([Temp], [Label])
-labelDefaultState = ([Temp i | i<-[0..]], ["L_" ++ (show i) | i <- [(0::Int)..]])
 
 -- | A type to represent temporaries.
 --
@@ -45,39 +41,42 @@ mkLabel l | '$' `elem` l =
               error $ "Label \"" ++ l ++ "\" contains reserver character '$'."
           | otherwise = 'L':l
 
--- -- | Name generation monad
--- class Monad m => MonadNameGen m where
---   -- | Generates a fresh temporary. The returned temporary is
---   -- guaranteed to be different from all the ones returned previously
---   -- and the ones give to 'avoid'.
---   nextTemp :: m Temp
 
---   -- | Declare that a list of temps must be avoided by 'nextTemp'.
---   -- 'nextTemp' will not return a temp that was passed to 'avoid'.
---   avoid :: [Temp] -> m ()
 
---   -- | Generates a fresh label.
---   nextLabel :: m Label
 
--- -- | Name generation monad transformer.
--- newtype NameGenT m a = NameGenT (StateT ([Temp], [Label]) m a)
---   deriving (Functor, Applicative, Monad, MonadTrans)
+-- | Name generation monad
+class Monad m => MonadNameGen m where
+  -- | Generates a fresh temporary. The returned temporary is
+  -- guaranteed to be different from all the ones returned previously
+  -- and the ones give to 'avoid'.
+  nextTemp' :: m Temp
 
--- -- | Name generation monad.
--- type NameGen a = NameGenT Identity a
+  -- | Declare that a list of temps must be avoided by 'nextTemp'.
+  -- 'nextTemp' will not return a temp that was passed to 'avoid'.
+  avoid' :: [Temp] -> m ()
 
--- runNameGen :: NameGen a -> a
--- runNameGen = runIdentity . runNameGenT
+  -- | Generates a fresh label.
+  nextLabel' :: m Label
 
--- instance (Monad m) => MonadNameGen (NameGenT m) where
---   nextTemp = NameGenT $ do (t:ts, ls) <- get; put (ts, ls); return t
---   avoid av =
---     NameGenT $
---       do (ts, ls) <- get
---          put (filter (\t -> not (show t `elem` (map show av))) ts, ls)
---          return ()
---   nextLabel = NameGenT $ do (ts, l:ls) <- get; put (ts, ls); return l
+-- | Name generation monad transformer.
+newtype NameGenT m a = NameGenT (StateT ([Temp], [Label]) m a)
+  deriving (Functor, Applicative, Monad, MonadTrans, MonadIO)
 
--- runNameGenT :: (Monad m) => NameGenT m a -> m a
--- runNameGenT (NameGenT x) =
---    evalStateT x ([Temp i | i<-[0..]], ["L_" ++ (show i) | i <- [(0::Int)..]])
+-- | Name generation monad.
+type NameGen a = NameGenT Identity a
+
+runNameGen :: NameGen a -> a
+runNameGen = runIdentity . runNameGenT
+
+instance (Monad m) => MonadNameGen (NameGenT m) where
+  nextTemp' = NameGenT $ do (t:ts, ls) <- get; put (ts, ls); return t
+  avoid' av =
+    NameGenT $
+      do (ts, ls) <- get
+         put (filter (\t -> not (show t `elem` (map show av))) ts, ls)
+         return ()
+  nextLabel' = NameGenT $ do (ts, l:ls) <- get; put (ts, ls); return l
+
+runNameGenT :: (Monad m) => NameGenT m a -> m a
+runNameGenT (NameGenT x) =
+   evalStateT x ([Temp i | i<-[0..]], ["L_" ++ (show i) | i <- [(0::Int)..]])

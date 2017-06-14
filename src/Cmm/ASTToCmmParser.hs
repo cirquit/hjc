@@ -1,48 +1,41 @@
 module Cmm.ASTToCmmParser where
 
-import qualified Data.Map             as Map
-import qualified Data.List            as DL
+import qualified Data.Map                   as Map
+import qualified Data.List                  as DL
 import           Control.Monad.Trans.State
+import           Control.Monad.Trans.Class          (lift)
 import           Control.Monad.IO.Class
 import           Control.Lens
 import           Control.Monad                      (when, zipWithM_)
 
 import           AST
-import           Cmm.LabelGenerator
+import           Cmm.LabelGenerator                 ( Temp, Label, mkLabel, mkNamedTemp, MonadNameGen(..)
+                                                    , NameGen, runNameGen, NameGenT, runNameGenT
+                                                    )
 import           Cmm.CAST
-import qualified SymbolTable          as ST
+import qualified SymbolTable                as ST
 
 ast2cmms :: MiniJava -> IO String
 ast2cmms ast = cmm2str <$> ast2cmm ast
-
 
 data CmmScope = CmmScope
     { _curClass       :: Maybe Class
     , _curMethod      :: Maybe Method
     , _cmm            :: Cmm
-    , _labelGenerator :: ([Temp], [Label])
     }
 
-curClass :: Lens' CmmScope (Maybe Class) 
-curClass = lens _curClass (\x y -> x { _curClass = y })
-
-curMethod :: Lens' CmmScope (Maybe Method) 
-curMethod = lens _curMethod (\x y -> x { _curMethod = y })
-
-cmm   :: Lens' CmmScope Cmm
-cmm = lens _cmm (\x y -> x { _cmm = y })
-
-labelGenerator   :: Lens' CmmScope ([Temp], [Label])
-labelGenerator = lens _labelGenerator (\x y -> x { _labelGenerator = y })
-
-io :: MonadIO m => IO a -> m a 
-io = liftIO
-
+-- | C-- Monad
+--
+--  Based on the NameGenT so we can use the `nextLabel` with internal state without contaminating the CmmScope
+--  Outer Transformer is the StateT which holds the CmmScope
+--
+--
+type CM m a = StateT CmmScope (NameGenT m) a 
 
 -- | main intro function
 --
 ast2cmm :: MiniJava -> IO Cmm
-ast2cmm ast = (view cmm . snd) <$> runStateT (parseMiniJavaCmm ast) cmmScope
+ast2cmm ast = (view cmm . snd) <$> runNameGenT (runStateT (parseMiniJavaCmm ast) cmmScope)
     where
         -- | running state
         --
@@ -51,47 +44,46 @@ ast2cmm ast = (view cmm . snd) <$> runStateT (parseMiniJavaCmm ast) cmmScope
             { _curClass       = Nothing
             , _curMethod      = Nothing
             , _cmm            = []
-            , _labelGenerator = labelDefaultState
             }
 
-parseMiniJavaCmm :: MiniJava -> StateT CmmScope IO ()
+parseMiniJavaCmm :: MiniJava -> CM IO ()
 parseMiniJavaCmm (MiniJava mc oc) = do
     mapM_ parseClassCmm oc
     parseMainClassCmm mc
 
 -- | currently a single method is supported
 --
-parseMainClassCmm :: Class -> StateT CmmScope IO ()
+parseMainClassCmm :: Class -> CM IO ()
 parseMainClassCmm cls = do
     curClass .= Just cls
     m <- withArgLen 0 . withName "Lmain" <$> parseMethodCmm (head $ _methods cls)
     addMethod m
 
-parseClassCmm :: Class -> StateT CmmScope IO ()
+parseClassCmm :: Class -> CM IO ()
 parseClassCmm cls = do
     curClass .= Just cls
     return ()
 
-parseMethodCmm :: Method -> StateT CmmScope IO CmmMethod
+parseMethodCmm :: Method -> CM IO CmmMethod
 parseMethodCmm meth = do
     curMethod .= Just meth
     CmmMethod <$> methodNameCmm
               <*> methodArgLength
               <*> methodBodyCmm
-              <*> (return $ mkNamedTemp "mainRet")
+              <*> nextTemp
 
-methodNameCmm :: StateT CmmScope IO String
+methodNameCmm :: CM IO String
 methodNameCmm = do
     (Just cls)  <- view curClass  <$> get
     (Just meth) <- view curMethod <$> get
     return $ (_className cls) ++ '$' : (_methodName meth)
 
-methodArgLength :: StateT CmmScope IO Int
+methodArgLength :: CM IO Int
 methodArgLength =  do
     (Just meth) <- view curMethod <$> get
     return . length $ _methodArguments meth
 
-methodBodyCmm :: StateT CmmScope IO [CmmStm]
+methodBodyCmm :: CM IO [CmmStm]
 methodBodyCmm = return []
 
 -- | utils
@@ -105,34 +97,37 @@ withArgLen l m = m { cmmArgLength = l }
 
 -- | monadic utils
 --
-addMethod :: CmmMethod -> StateT CmmScope IO ()
+addMethod :: CmmMethod -> CM IO ()
 addMethod m = do
     cmm %= (++ [m])
 
--- | interpretation of the given LabelGenerator
---
---   we already have a StateT which can carry the scope of the used labels
---
+-- | defined in LabelGenerator.hs
 --
 -- | Generates a fresh temporary. The returned temporary is
 --   guaranteed to be different from all the ones returned previously
---   and the ones give to 'avoid'.
-nextTemp :: StateT CmmScope IO Temp
-nextTemp = do
-    (t:ts, ls) <- view labelGenerator <$> get
-    labelGenerator .= (ts, ls)
-    return t
+--   and the ones give to 'avoid'.nextTemp :: Monad m => CM m Temp
+nextTemp :: CM IO Temp
+nextTemp = lift nextTemp' 
 
 -- | Generates a fresh label.
-nextLabel :: StateT CmmScope IO Label
-nextLabel = do
-    (ts, l:ls) <- view labelGenerator <$> get
-    labelGenerator .= (ts, ls)
-    return l
+nextLabel :: CM IO Label
+nextLabel = lift nextLabel'
 
 -- | Declare that a list of temps must be avoided by 'nextTemp'.
 --  'nextTemp' will not return a temp that was passed to 'avoid'.
-avoid :: [Temp] -> StateT CmmScope IO ()
-avoid av = do
-    (ts, ls) <- view labelGenerator <$> get
-    labelGenerator .= (filter (\t -> not (show t `elem` (map show av))) ts, ls)
+avoid :: [Temp] -> CM IO ()
+avoid = lift . avoid'
+
+-- | boilerplate
+
+curClass :: Lens' CmmScope (Maybe Class) 
+curClass = lens _curClass (\x y -> x { _curClass = y })
+
+curMethod :: Lens' CmmScope (Maybe Method) 
+curMethod = lens _curMethod (\x y -> x { _curMethod = y })
+
+cmm   :: Lens' CmmScope Cmm
+cmm = lens _cmm (\x y -> x { _cmm = y })
+
+io :: MonadIO m => IO a -> m a 
+io = liftIO
