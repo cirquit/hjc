@@ -1,7 +1,8 @@
 module SymbolTable where
 
 import qualified Data.Map      as Map
-import           Data.List               (find)
+import           Data.Int
+import           Data.List               (find, genericLength)
 import           Control.Lens
 import           Debug.Trace (trace)
 
@@ -102,6 +103,10 @@ lookupMethodSymbols id cls = Map.lookup id (view metSymbols cls)
 --
 getGlobalMemberType :: Identifier -> ClassSymbols -> Maybe Type
 getGlobalMemberType id cls = _type <$> (find (\v -> _variableName v == id) . reverse $ view varSymbols cls)
+
+getMemberCount :: ClassSymbols -> Int32
+getMemberCount = genericLength . view varSymbols
+
 
 -- | default classes
 --

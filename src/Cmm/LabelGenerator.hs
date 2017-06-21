@@ -41,9 +41,6 @@ mkLabel l | '$' `elem` l =
               error $ "Label \"" ++ l ++ "\" contains reserver character '$'."
           | otherwise = 'L':l
 
-
-
-
 -- | Name generation monad
 class Monad m => MonadNameGen m where
   -- | Generates a fresh temporary. The returned temporary is

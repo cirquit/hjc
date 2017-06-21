@@ -24,13 +24,13 @@ defaultConfig :: Config
 defaultConfig = Config
     {
       parse'        = True
-    , showAst'      = False
+    , showAst'      = True 
     , showResult'   = False
     , showTime'     = True
     , compileToCmm  = True 
     , javaOutputDir = "../output"
     , cmmOutputDir  = "../cmm-output"
-    , typeErrLvl   = AllErrors -- FirstError -- Silently 
+    , typeErrLvl    = AllErrors -- FirstError -- Silently 
     }
 
 -- run all examples
@@ -56,7 +56,7 @@ main = do
 -- run single example
 main' :: IO ()
 main' = do
-    let inputFiles = [ "../examples/Add.java" ]
+    let inputFiles = [ "../examples/Factorial.java" ]
     mapM_ (evaluateSLProgram defaultConfig) inputFiles 
 
 -- run examples that should fail (logically, not lexically)

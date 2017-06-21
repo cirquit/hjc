@@ -34,30 +34,30 @@ data CmmStm =
    deriving Eq
 
 data CmmBinOp =
-     PLUS
-   | MINUS
-   | MUL
-   | DIV
-   | AND
-   | OR
-   | LSHIFT
-   | RSHIFT
-   | ARSHIFT
-   | XOR
-   deriving (Eq, Show)
+     PLUS_C
+   | MINUS_C
+   | MUL_C
+   | DIV_C
+   | AND_C
+   | OR_C
+   | LSHIFT_C
+   | RSHIFT_C
+   | ARSHIFT_C
+   | XOR_C
+   deriving Eq
 
 data CmmRelOp =
-     EQ
-   | NE
-   | LT
-   | GT
-   | LE
-   | GE
-   | ULT
-   | ULE
-   | UGT
-   | UGE
-   deriving (Eq, Show)
+     EQ_C
+   | NE_C
+   | LT_C
+   | GT_C
+   | LE_C
+   | GE_C
+   | ULT_C
+   | ULE_C
+   | UGT_C
+   | UGE_C
+   deriving Eq
 
 
 cmm2str :: Cmm -> String
@@ -70,7 +70,7 @@ instance Show CmmMethod where
   show m = cmmMethodName m ++ "(" ++ show (cmmArgLength m) ++ ") {\n  "
            ++ intercalate "\n  " (map show (cmmBody m))
            ++ "\n  return " ++ show (cmmReturn m)
-           ++ "\n}"
+           ++ "\n}\n"
 
 instance Show CmmExp where
   show (CONST i) = "CONST(" ++ show i ++ ")"
@@ -91,3 +91,29 @@ instance Show CmmStm where
                                         ++ l1 ++ ", " ++ l2 ++ ")"
   show (SEQ ss) = "SEQ(" ++ intercalate ", " (map show ss) ++ ")"
   show (LABEL l1) = "LABEL(" ++ l1 ++ ")"
+
+instance Show CmmBinOp where
+  
+   show PLUS_C    = "PLUS"
+   show MINUS_C   = "MINUS"
+   show MUL_C     = "MUL"
+   show DIV_C     = "DIV"
+   show AND_C     = "AND"
+   show OR_C      = "OR"
+   show LSHIFT_C  = "LSHIFT"
+   show RSHIFT_C  = "RSHIFT"
+   show ARSHIFT_C = "ARSHIFT"
+   show XOR_C     = "XOR"
+
+
+instance Show CmmRelOp where
+   show EQ_C = "EQ"
+   show NE_C = "NE"
+   show LT_C = "LT"
+   show GT_C = "GT"
+   show LE_C = "LE"
+   show GE_C = "GE"
+   show ULT_C = "ULT"
+   show ULE_C = "ULE"
+   show UGT_C = "UGT"
+   show UGE_C = "UGE"

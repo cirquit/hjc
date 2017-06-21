@@ -11,6 +11,7 @@ import           Data.Set                           (toAscList)
 import           Data.List.NonEmpty                 (head)
 import qualified Data.List.Split       as LS
 import           Control.Lens
+import           Control.Monad                      (when)
 
 import           AST
 import           Config
@@ -146,7 +147,7 @@ writeJavaOutput (OutputInfo inputName _ _ (Just ast) _ _) conf = do
     writeFile outputName result
 
 writeCmmOutput :: OutputInfo -> Config -> IO ()
-writeCmmOutput (OutputInfo inputName _ _ (Just ast) _ _) conf = do
+writeCmmOutput (OutputInfo inputName _ _ (Just ast) _ _) conf = when (compileToCmm conf) $ do
     let _ : name : _ = reverse <$> (LS.splitOneOf "./" $ reverse inputName)
     let outputName = (cmmOutputDir conf) </> (name ++ "-cmm.tree")
     result <- ast2cmms ast
