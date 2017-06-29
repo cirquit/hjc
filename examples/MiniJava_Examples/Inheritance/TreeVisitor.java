@@ -1,25 +1,26 @@
-class BinaryTree{
+// The classes are basically the same as the BinaryTree 
+// file except the visitor classes and the accept method
+// in the Tree class
+
+class TreeVisitor{
     public static void main(String[] a){
-	System.out.println(new BT().Start());
+	System.out.println(new TV().Start());
     }
 }
 
-
-// This class invokes the methods to create a tree,
-// insert, delete and serach for  elements on it
-class BT {
+class TV {
 
     public int Start(){
 	Tree root ;
 	boolean ntb ;
 	int nti ;
+	MyVisitor v ;
 
 	root = new Tree();
 	ntb = root.Init(16);
 	ntb = root.Print();
 	System.out.println(100000000);
 	ntb = root.Insert(8) ;
-	ntb = root.Print();
 	ntb = root.Insert(24) ;
 	ntb = root.Insert(4) ;
 	ntb = root.Insert(12) ;
@@ -27,6 +28,11 @@ class BT {
 	ntb = root.Insert(28) ;
 	ntb = root.Insert(14) ;
 	ntb = root.Print();
+	System.out.println(100000000);
+	v = new MyVisitor();
+	System.out.println(50000000);
+	nti = root.accept(v);
+	System.out.println(100000000);
 	System.out.println(root.Search(24));
 	System.out.println(root.Search(12));
 	System.out.println(root.Search(16));
@@ -41,6 +47,7 @@ class BT {
 
 }
 
+
 class Tree{
     Tree left ;
     Tree right;
@@ -49,7 +56,22 @@ class Tree{
     boolean has_right ;
     Tree my_null ;
 
-    // Initialize a node with a key value and no children
+
+
+    //Tree new_node ;
+    //Tree current_node ;
+    //Tree parent_node ;
+    
+   // boolean ntb ;
+    //boolean cont ;
+    //boolean found ;
+    //int ifound ;
+  //  boolean is_root ;
+  //  int     nti ;
+  //  int key_aux ;
+   // int auxkey1 ;
+   // int auxkey2 ;
+
     public boolean Init(int v_key){
 	key = v_key ;
 	has_left = false ;
@@ -57,13 +79,11 @@ class Tree{
 	return true ;
     }
 
-    // Update the right child with rn
     public boolean SetRight(Tree rn){
 	right = rn ;
 	return true ;
     }
-    
-    // Update the left child with ln
+
     public boolean SetLeft(Tree ln){
 	left = ln ;
 	return true ;
@@ -103,10 +123,7 @@ class Tree{
 	 has_right = val ;
 	 return true ;
     }
-    
-    // This method compares two integers and
-    // returns true if they are equal and false
-    // otherwise
+
     public boolean Compare(int num1 , int num2){
 	boolean ntb ;
 	int nti ;
@@ -119,14 +136,12 @@ class Tree{
 	return ntb ;
     }
 
-
-    // Insert a new element in the tree
     public boolean Insert(int v_key){
 	Tree new_node ;
 	boolean ntb ;
+	Tree current_node ;
 	boolean cont ;
 	int key_aux ;
-	Tree current_node ;
 
 	new_node = new Tree();
 	ntb = new_node.Init(v_key) ;
@@ -156,16 +171,14 @@ class Tree{
 	return true ;
     }
 
-
-    // Delete an element from the tree
     public boolean Delete(int v_key){
 	Tree current_node ;
 	Tree parent_node ;
 	boolean cont ;
 	boolean found ;
+	boolean ntb ;
 	boolean is_root ;
 	int key_aux ;
-	boolean ntb ;
 
 	current_node = this ;
 	parent_node = this ;
@@ -189,8 +202,8 @@ class Tree{
 		    else cont = false ;
 		else { 
 		    if (is_root) 
-			if ((!current_node.GetHas_Right()) && 
-			    (!current_node.GetHas_Left()) )
+			if (!current_node.GetHas_Right() && 
+			    !current_node.GetHas_Left() )
 			    ntb = true ;
 			else 
 			    ntb = this.Remove(parent_node,current_node); 
@@ -203,9 +216,6 @@ class Tree{
 	return found ;
     }
 
-
-    // Check if the element to be removed will use the
-    // righ or left subtree if one exists
     public boolean Remove(Tree p_node, Tree c_node){
 	boolean ntb ;
 	int auxkey1 ;
@@ -218,8 +228,6 @@ class Tree{
 		ntb = this.RemoveRight(p_node,c_node) ;
 	    else {
 		auxkey1 = c_node.GetKey();
-		//auxtree01 = p_node.GetLeft() ;
-		//auxkey2 = auxtree01.GetKey() ;
 		auxkey2 = (p_node.GetLeft()).GetKey() ;
 		if (this.Compare(auxkey1,auxkey2)) {
 		    ntb = p_node.SetLeft(my_null);
@@ -233,17 +241,9 @@ class Tree{
 	return true ;
     }
 
-
-    // Copy the child key to the parent until a leaf is
-    // found and remove the leaf. This is done with the
-    // right subtree
     public boolean RemoveRight(Tree p_node, Tree c_node){
 	boolean ntb ;
-
 	while (c_node.GetHas_Right()){
-	    //auxtree01 = c_node.GetRight() ;
-	    //auxint02 = auxtree01.GetKey();
-	    //ntb = c_node.SetKey(auxint02);
 	    ntb = c_node.SetKey((c_node.GetRight()).GetKey());
 	    p_node = c_node ;
 	    c_node = c_node.GetRight() ;
@@ -253,17 +253,9 @@ class Tree{
 	return true ;
     }
 
-
-    // Copy the child key to the parent until a leaf is
-    // found and remove the leaf. This is done with the
-    // left subtree
     public boolean RemoveLeft(Tree p_node, Tree c_node){
 	boolean ntb ;
-
 	while (c_node.GetHas_Left()){
-	    //auxtree01 = c_node.GetLeft() ;
-	    //auxint02 = auxtree01.GetKey();
-	    //ntb = c_node.SetKey(auxint02);
 	    ntb = c_node.SetKey((c_node.GetLeft()).GetKey());
 	    p_node = c_node ;
 	    c_node = c_node.GetLeft() ;
@@ -273,11 +265,11 @@ class Tree{
 	return true ;
     }
 
-    // Search for an elemnt in the tree
+
     public int Search(int v_key){
-	boolean cont ;
+	Tree current_node ;
 	int ifound ;
-	Tree current_node;
+	boolean cont ;
 	int key_aux ;
 
 	current_node = this ;
@@ -302,33 +294,81 @@ class Tree{
 	return ifound ;
     }
 
-    // Invoke the method to really print the tree elements
     public boolean Print(){
-	Tree current_node;
 	boolean ntb ;
+	Tree current_node ;
 
 	current_node = this ;
 	ntb = this.RecPrint(current_node);
 	return true ;
     }
 
-    // Print the elements of the tree
     public boolean RecPrint(Tree node){
 	boolean ntb ;
 
 	if (node.GetHas_Left()){
-	    //auxtree01 = node.GetLeft() ;
-	    //ntb = this.RecPrint(auxtree01);
 	    ntb = this.RecPrint(node.GetLeft());
 	} else ntb = true ;
 	System.out.println(node.GetKey());
 	if (node.GetHas_Right()){
-	    //auxtree01 = node.GetRight() ;
-	    //ntb = this.RecPrint(auxtree01);
 	    ntb = this.RecPrint(node.GetRight());
 	} else ntb = true ;
 	return true ;
     }
+    
+    public int accept(Visitor v){
+	int nti ;
+
+	System.out.println(333);
+	nti = v.visit(this) ;
+	return 0 ;
+    }
 
 }
-   
+
+  
+
+class Visitor {
+    Tree l ;
+    Tree r ;
+
+    public int visit(Tree n){
+	int nti ;
+
+	if (n.GetHas_Right()){
+	    r = n.GetRight() ;
+	    nti = r.accept(this) ; }
+	else nti = 0 ;
+
+	if (n.GetHas_Left()) {
+	    l = n.GetLeft(); 
+	    nti = l.accept(this) ; }
+	else nti = 0 ;
+
+	return 0;
+    }
+
+}
+
+
+class MyVisitor extends Visitor {
+
+    public int visit(Tree n){
+	int nti ;
+
+	if (n.GetHas_Right()){
+	    r = n.GetRight() ;
+	    nti = r.accept(this) ; }
+	else nti = 0 ;
+
+	System.out.println(n.GetKey());
+
+	if (n.GetHas_Left()) {
+	    l = n.GetLeft(); 
+	    nti =l.accept(this) ; }
+	else nti = 0 ;
+
+	return 0;
+    }
+
+}

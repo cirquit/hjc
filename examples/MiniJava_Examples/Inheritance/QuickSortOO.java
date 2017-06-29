@@ -1,34 +1,19 @@
-class QuickSort{
+// variant of quicksort, using sub-classes and arrays as parameters
+
+class QuickSortOO {
     public static void main(String[] a){
-	System.out.println(new QS().Start(10));
+	System.out.println(new TestQS().Start(10));
     }
 }
-
 
 // This class contains the array of integers and
 // methods to initialize, print and sort the array
 // using Quicksort
-class QS{
-    
-    int[] number ;
-    int size ;
+class QS {
+    int maxlen; // maximum over all right params seen in calls
 
-    // Invoke the Initialization, Sort and Printing
-    // Methods
-    public int Start(int sz){
-	int aux01 ;
-	aux01 = this.Init(sz);
-	aux01 = this.Print();
-	System.out.println(9999);
-	aux01 = size - 1 ;
-	aux01 = this.Sort(0,aux01);
-	aux01 = this.Print();
-	return 0 ;
-    }
-
- 
     // Sort array of integers using Quicksort method
-    public int Sort(int left, int right){
+    public int Sort(int left, int right, int [] number){
 	int v ;
 	int i ;
 	int j ;
@@ -37,6 +22,8 @@ class QS{
 	boolean cont01;
 	boolean cont02;
 	int aux03 ;
+        if (maxlen < right) maxlen = right ; 
+        else maxlen = maxlen; 
 	t = 0 ;
 	if (left < right){
 	    v = number[right] ;
@@ -70,14 +57,21 @@ class QS{
 	    number[j] = number[i] ;
 	    number[i] = number[right] ;
 	    number[right] = t ;
-	    nt = this.Sort(left,i-1);
-	    nt = this.Sort(i+1,right);
+	    nt = this.Sort(left,i-1,number);
+	    nt = this.Sort(i+1,right,number);
 	}
 	else nt = 0 ;
 	return 0 ;
     }
 
     
+}
+
+class TestQS extends QS {
+    int[] number ;
+    int size ;
+
+     int indent;
     // Print array of integers
     public int Print(){
 	int j ;
@@ -88,7 +82,6 @@ class QS{
 	}
 	return 0 ;
     }
-    
 
     // Initialize array of integers
     public int Init(int sz){
@@ -109,4 +102,21 @@ class QS{
 	return 0 ;	
     }
 
+    // Invoke the Initialization, Sort and Printing
+    // Methods
+    public int Start(int sz){
+	int aux01 ;
+	maxlen = 0;                        // field in superclass!
+	aux01 = this.Init(sz);
+	aux01 = this.Print();
+	System.out.println(9999);
+	aux01 = size - 1 ;
+	aux01 = this.Sort(0,aux01,number); // uses method in a superclass
+	aux01 = this.Print();
+	System.out.println(9999);
+	System.out.println(maxlen);        // print length
+	return 0 ;
+    }
+
 }
+

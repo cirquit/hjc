@@ -54,9 +54,9 @@ main = do
                     return ()
 
 -- run single example
-main' :: IO ()
-main' = do
-    let inputFiles = [ "../examples/Factorial.java" ]
+main' :: FilePath -> IO ()
+main' fp = do
+    let inputFiles = [ "../examples/" ++ fp ++ ".java" ]
     mapM_ (evaluateSLProgram defaultConfig) inputFiles 
 
 -- run examples that should fail (logically, not lexically)
@@ -90,10 +90,12 @@ evaluateSLProgram config inputFile = do
             -- std out
             showSuccess oi config
             showTypeScope oi config
-            showTime oi config
 
             -- parsing ast to java
             writeJavaOutput oi config
             writeCmmOutput  oi config
+
+            showTime oi config
+
 
     putStrLn $ replicate 80 '-'

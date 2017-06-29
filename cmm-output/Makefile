@@ -1,10 +1,11 @@
 CC=gcc
-CLFAGS=-m32
+CFLAGS=-m32 -w
 OUTPUT=testprog
 LIB=lib/runtime.c
 
 all:
-	tree2c $(file) > testprog.c && $(CC) $(CFLAGS) testprog.c $(LIB) -o $(OUTPUT)
+	tree2c $(file) > testprog.c && $(CC) $(CFLAGS) testprog.c $(LIB) -o $(OUTPUT) && \
+			echo 'Output of ./testprog:' && ./testprog
 
 clean:
 	-rm *.tree

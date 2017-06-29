@@ -145,11 +145,18 @@ writeJavaOutput (OutputInfo inputName _ _ (Just ast) _ _) conf = do
     let outputName = (javaOutputDir conf) </> (name ++ "-output.java")
     let result = showJC ast
     writeFile outputName result
+    putChunk $ (chunk ">> ")
+    putChunk $ (chunk "Written: ") & fore green
+    putChunk $ (chunk outputName) <> (chunk "\n") & bold
 
 writeCmmOutput :: OutputInfo -> Config -> IO ()
 writeCmmOutput (OutputInfo inputName _ _ (Just ast) _ _) conf = when (compileToCmm conf) $ do
     let _ : name : _ = reverse <$> (LS.splitOneOf "./" $ reverse inputName)
-    let outputName = (cmmOutputDir conf) </> (name ++ "-cmm.tree")
+    let outputName = (cmmOutputDir conf) </> (name ++ ".tree")
     result <- ast2cmms ast
     writeFile outputName result
+    putChunk $ (chunk ">> ")
+    putChunk $ (chunk "Written: ") & fore green
+    putChunk $ (chunk outputName) <> (chunk "\n") & bold
+
 

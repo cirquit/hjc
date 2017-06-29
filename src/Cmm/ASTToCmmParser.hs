@@ -21,13 +21,14 @@ ast2cmms :: MiniJava -> IO String
 ast2cmms ast = cmm2str <$> ast2cmm ast
 
 data CmmScope = CmmScope
-    { _curClass       :: Maybe Class
-    , _curMethod      :: Maybe Method
-    , _localObjectId  :: Maybe Identifier
-    , _symbols        :: ST.MiniJavaTable
-    , _cmm            :: Cmm
-    , _localTemps     :: Map.Map Identifier CmmExp  -- (CmmExp == TEMP, PARAM(i))
-    , _curRetTemp     :: CmmExp
+    { _curClass         :: Maybe Class
+    , _curMethod        :: Maybe Method
+    , _localObjectType  :: Maybe Identifier
+    , _symbols          :: ST.MiniJavaTable
+    , _cmm              :: Cmm
+    , _localTemps       :: Map.Map Identifier CmmExp  -- (CmmExp == TEMP, PARAM(i), MEM(PARAM + n*4))
+    , _curRetTemp       :: CmmExp
+    , _localVars        :: Map.Map Identifier Type    -- variable type mapping for naming of methods
     }
 
 -- | C-- Monad
@@ -49,11 +50,12 @@ ast2cmm ast = (view cmm . snd) <$> runNameGenT (runStateT (parseMiniJavaCmm ast)
         cmmScope = CmmScope
             { _curClass       = Nothing
             , _curMethod      = Nothing
-            , _localObjectId  = Nothing
+            , _localObjectType  = Nothing
             , _symbols        = symbols
             , _cmm            = []
             , _localTemps     = Map.empty
-            , _curRetTemp     = TEMP $ mkNamedTemp "mainReturnTemp" 
+            , _curRetTemp     = TEMP $ mkNamedTemp "mainReturnTemp"
+            , _localVars      = Map.empty
             }
 
         -- | computing this twice, here and in TypeCheck.hs, this should be cached
@@ -74,8 +76,19 @@ parseMainClassCmm cls = withClass cls $ do
     addZeroReturn m >>= addMethod
 
 parseClassCmm :: Class -> CM IO ()
-parseClassCmm cls = withClass cls $ do 
+parseClassCmm cls = withClass cls $ do
+     addClassVariablesToScope (_variables cls)
      mapM_ (\m -> parseMethodCmm m >>= addMethod) (_methods cls)
+
+
+addClassVariablesToScope :: [Variable] -> CM IO ()
+addClassVariablesToScope vars = do
+    mapM_ insertMemoryPaddedVar $ zip vars [1..] 
+  where
+    insertMemoryPaddedVar :: (Variable, Int32) -> CM IO ()
+    insertMemoryPaddedVar (v, i) = do
+        let memExp = MEM $ BINOP PLUS_C (PARAM 0) (CONST (i * 4))
+        localTemps %= Map.insert (_variableName v) memExp 
 
 parseMethodCmm :: Method -> CM IO CmmMethod
 parseMethodCmm meth = withMethod meth $ do
@@ -122,33 +135,48 @@ stmParserC   (StmExp   e) = expParserC e     >>= moveTemp
 -- 
 ifParserC :: Statement -> CM IO CmmStm
 ifParserC (If e b1 b2) = do
-   (relOp,  lhsCE, rhsCE) <- relOpParserC e
-   (trueL,  trueLS)          <- nextLabelLS 
-   (falseL, falseLS)         <- nextLabelLS 
-   (endL,   endLS, endLE)    <- nextLabelLSE
+   (trueL, trueLS)       <- nextLabelLS 
+   (falseL, falseLS)     <- nextLabelLS 
+   (endL, endLS, endLE)  <- nextLabelLSE
+   (relOp, lhsCE, rhsCE) <- relOpParserC e
    let cjmp   = CJUMP relOp lhsCE rhsCE trueL falseL
        endjmp = JUMP endLE [endL]
    trueCS  <- SEQ <$> mapM stmParserC b1
    falseCS <- SEQ <$> mapM stmParserC (maybe [] id b2)
    return $ SEQ [cjmp, trueLS, trueCS, endjmp, falseLS, falseCS , endLS] 
 
-relOpParserC :: Expression -> CM IO (CmmRelOp, CmmExp, CmmExp)
-relOpParserC (BinOp e1 op e2) = (,,) <$> toCmmRelOp op <*> expParserC e1 <*> expParserC e2
-    where
-        toCmmRelOp LEQ   = return LE_C 
-        toCmmRelOp LE    = return LT_C 
-        toCmmRelOp GEQ   = return GE_C
-        toCmmRelOp GE    = return GT_C
-        toCmmRelOp EQS   = return EQ_C
-        toCmmRelOp NEQS  = return NE_C
-        toCmmRelOp AND   = error "hjc:ASTToCmmParser:relOpParserC - AND is not supported by the provided c-- template"
-        toCmmRelOp OR    = error "hjc:ASTToCmmParser:relOpParserC - OR  is not supported by the provided c-- template"
-
 whileParserC :: Statement -> CM IO CmmStm
-whileParserC (While e b) = undefined
+whileParserC (While e b) = do
+    (relOp, lhsCE, rhsCE)      <- relOpParserC e
+    (startL, startLS, startLE) <- nextLabelLSE
+    (whileL, whileLS)          <- nextLabelLS 
+    (endL, endLS)              <- nextLabelLS 
+    let cjmp     = CJUMP relOp lhsCE rhsCE whileL endL
+        startjmp = JUMP startLE [startL]
+    whileCS <- SEQ <$> mapM stmParserC b
+    return $ SEQ [startLS, cjmp, whileLS, whileCS, startjmp, endLS]
+
+relOpParserC :: Expression -> CM IO (CmmRelOp, CmmExp, CmmExp)
+relOpParserC (BinOp e1 op e2) = do
+    case op of
+        LEQ  -> (,,) <$> pure LE_C <*> expParserC e1 <*> expParserC e2
+        LE   -> (,,) <$> pure LT_C <*> expParserC e1 <*> expParserC e2
+        GEQ  -> (,,) <$> pure GE_C <*> expParserC e1 <*> expParserC e2
+        GE   -> (,,) <$> pure GT_C <*> expParserC e1 <*> expParserC e2
+        EQS  -> (,,) <$> pure EQ_C <*> expParserC e1 <*> expParserC e2
+        NEQS -> (,,) <$> pure NE_C <*> expParserC e1 <*> expParserC e2
+        AND  -> undefined
+--            case e1 == 1 of
+--                True -> case e2 == 1 of
+--                            True -> jump to true label
+--                            False -> jump to false label
+--                False -> jump tp false label
+        OR   -> undefined
+
+
 
 blockstmParserC :: Statement -> CM IO CmmStm
-blockstmParserC (BlockStm stms) = undefined
+blockstmParserC (BlockStm stms) = SEQ <$> mapM stmParserC stms
 
 printlnParserC :: Expression -> CM IO CmmExp
 printlnParserC e = do
@@ -165,31 +193,65 @@ printParserC e = do
 -- object parser
 expParserC :: Expression -> CM IO CmmExp
 expParserC (NewObject id es) = do
-    localObjectId .= Just id
-    let l = NAME $ mkLabel "_halloc"
-    classMemory <- calculateMemoryCost id
-    return $ CALL l [CONST classMemory]
+    localObjectType .= Just id
+    classMemory <- calculateClassMemoryCost id
+    callAlloc (CONST classMemory)
 
 expParserC (MethodGet callerE mid es) = do
     ptr  <- expParserC callerE
     args <- mapM expParserC es
-    res <- CALL <$> newObjectMethodLabel mid <*> pure (ptr : args)
-    localObjectId .= Nothing
+    res <- CALL <$> methodLabel mid callerE <*> pure (ptr : args)
+    localObjectType .= Nothing
     return res
 
 expParserC (LitBool b) = return . CONST $ B.bool 1 0 b
 expParserC (LitInt i)  = return . CONST $ fromIntegral i
-expParserC (StrArr x)  = error "TODO - implement StrArr in expParserC"
-expParserC (IntArr x)  = error "TODO - implement IntArr in expParserC"
+expParserC (StrArr e)  = error "TODO - implement StrArr in expParserC"
+expParserC (IntArr e)  = do
+   arrLenE     <- expParserC e
+   arrMemoryCE <- calculateIntArrMemoryCost arrLenE
+   arrTE       <- nextTempE
+   allocMemory <- callAlloc arrMemoryCE
+   let allocStm   = MOVE arrTE       allocMemory
+       fillLength = MOVE (MEM arrTE) arrLenE 
+   return $ ESEQ (SEQ [allocStm,  fillLength]) arrTE 
+
+expParserC (IndexGet e ix) = do
+    callerCE <- expParserC e -- this is the pointer to the array, and the first element is the length
+    ixCE     <- expParserC ix
+    
+    indexByteTempE <- nextTempE
+    let indexByteOffsetCE = MOVE indexByteTempE $
+                               BINOP MUL_C
+                                   (BINOP PLUS_C ixCE (CONST 1))
+                                   (CONST 4)
+
+    (lengthValidL, lengthValidLS)     <- nextLabelLS
+    (lengthInvalidL, lengthInvalidLS) <- nextLabelLS
+
+--      length - index <= 1
+    let cjump = CJUMP LE_C (CONST 1) (BINOP MINUS_C (MEM callerCE) ixCE) lengthValidL lengthInvalidL
+
+    invalidCS <- moveTemp =<< callRaise =<< indexOutOfBounds
+
+    memberTE <- nextTempE
+    let validCS = MOVE memberTE (BINOP PLUS_C callerCE indexByteTempE)
+
+    return $ ESEQ (SEQ [indexByteOffsetCE, cjump, lengthInvalidLS, invalidCS, lengthValidLS, validCS]) (MEM memberTE)
+
 
 -- this pointer is always the first argument of the method
-expParserC This = return $ PARAM 0
+expParserC This = do
+    (Just c) <- view curClass <$> get
+    localObjectType .= Just (_className c)
+    return $ PARAM 0
 
 -- local definiton of a variable is saved to the local temps
 -- returning dummy value (not happy with this ast)
 expParserC (LitVar v) = do
     tempExp <- nextTempE
     localTemps %= Map.insert (_variableName v) tempExp
+    localVars  %= Map.insert (_variableName v) (_type v) 
     return tempExp
 
 -- identifier has to reference a temporary (locally defined variables or method arguments)
@@ -202,7 +264,9 @@ expParserC (LitIdent id) = do
 
 expParserC (Assign lhs rhs) = do
     stm <- MOVE <$> expParserC lhs <*> expParserC rhs -- assumption has to hold that any return of lhs should return a temporary (or a param)
-    return $ ESEQ stm (CONST 42)
+    lhsE <- expParserC lhs 
+    return $ ESEQ (SEQ [stm]) lhsE
+
 
 expParserC (BinOp e1 op e2) = do
     BINOP <$> toCmmBinOp op <*> expParserC e1 <*> expParserC e2
@@ -213,7 +277,7 @@ expParserC (BinOp e1 op e2) = do
         toCmmBinOp DIV   = return DIV_C
         toCmmBinOp AND   = return AND_C
         toCmmBinOp OR    = return OR_C
-        toCmmRelOp o@_   = error $ "hjc:ASTToCmmParser:expParserC - " ++ showJC o ++ " is not supported by the provided c-- template"
+        toCmmBinOp o@_   = error $ "hjc:ASTToCmmParser:expParserC - " ++ showJC o ++ " is not supported by the provided c-- template"
 
 -- TODO check assumpton that blockexpr is always a single expression
 expParserC (BlockExp exps) = do
@@ -231,12 +295,16 @@ expParserC _ = return $ CONST 404
 
 -- | takes the method id and assumes that there is a new object local id defined
 --
-newObjectMethodLabel :: Identifier -> CM IO CmmExp
-newObjectMethodLabel mid = do
-    moid <- view localObjectId <$> get
-    case moid of
-        (Just oid) -> return . NAME $ mkLabel oid ++ '$' : mid
-        Nothing    -> do
+methodLabel :: Identifier -> Expression -> CM IO CmmExp
+methodLabel mid exp = do
+    moid  <- view localObjectType <$> get
+    lvars <- view localVars <$> get
+    case (moid, exp) of
+        (Just oid, _)          -> return . NAME $ mkLabel oid ++ '$' : mid
+        (Nothing, LitIdent id) -> do
+            let (Just t) = Map.lookup id lvars
+            return . NAME $ mkLabel (showJC t) ++ '$' : mid
+        (_, _) -> do
             (Just cls)  <- view curClass  <$> get
             return . NAME $ mkLabel (_className cls) ++ '$' : mid
 
@@ -256,9 +324,12 @@ addMethod m = cmm %= (++ [m])
 
 withClass :: Class -> CM IO a -> CM IO ()
 withClass c f = do
-    curClass .= Just c
+    curClass  .= Just c
+    localVars %= Map.insert "this" (IdT (_className c))
     f
-    curClass .= Nothing
+    localTemps .= Map.empty
+    localVars  .= Map.empty
+    curClass   .= Nothing
 
 withMethod :: Method -> CM IO CmmMethod -> CM IO CmmMethod
 withMethod m f = do
@@ -269,9 +340,9 @@ withMethod m f = do
 
 withLocalObject :: Identifier -> CM IO CmmExp -> CM IO CmmExp
 withLocalObject id f = do
-    localObjectId .= Just id
+    localObjectType .= Just id
     e <- f
-    localObjectId .= Nothing
+    localObjectType .= Nothing
     return e
 
 localScope :: CM IO a -> CM IO a
@@ -279,6 +350,7 @@ localScope f = do
     s <- get
     r <- f
     localTemps .= view localTemps s
+    localVars  .= view localVars  s
     return r
 
 -- | defined in LabelGenerator.hs
@@ -324,13 +396,20 @@ moveTemp e = MOVE <$> nextTempE <*> pure e
 --  
 --   always adding 1 (~ 8 byte) for the pointer to object
 --
-calculateMemoryCost :: Identifier -> CM IO Int32
-calculateMemoryCost id = do
+calculateClassMemoryCost :: Identifier -> CM IO Int32
+calculateClassMemoryCost id = do
     sym <- view symbols <$> get
     let mcls = ST.lookupClassSymbols id sym
     case mcls of
         (Just cls) -> return . (4*) . (1+) $ ST.getMemberCount cls
-        Nothing    -> error $ "CmmParser.hs:calculateMemoryCost - class \"" ++ id ++ "\" could not be found. Terminating."  
+        Nothing    -> error $ "CmmParser.hs:calculateClassMemoryCost - class \"" ++ id ++ "\" could not be found. Terminating."  
+
+-- | sizeExpression + 1 for the length member
+--   times 4 because everything is in byte
+--
+calculateIntArrMemoryCost :: CmmExp -> CM IO CmmExp
+calculateIntArrMemoryCost ce = do
+    return $ BINOP MUL_C (BINOP PLUS_C  ce (CONST 1)) (CONST 4)
 
 addZeroReturn :: CmmMethod -> CM IO CmmMethod
 addZeroReturn m = do
@@ -352,6 +431,35 @@ evalCExpE cexp = flip ESEQ (CONST 1) <$> evalCExpS cexp
 evalCExpS :: CmmExp -> CM IO CmmStm
 evalCExpS cexp = MOVE <$> nextTempE <*> pure cexp
 
+
+callAlloc :: CmmExp -> CM IO CmmExp
+callAlloc ce = do
+    let l = NAME $ mkLabel "_halloc" 
+    return $ CALL l [ce]
+
+callRaise :: CmmExp -> CM IO CmmExp
+callRaise ce = do
+    let l = NAME $ mkLabel "_raise" 
+    return $ CALL l [ce]
+
+indexOutOfBounds :: CM IO CmmExp
+indexOutOfBounds = return $ CONST 111
+
+getCallerType :: Identifier -> CM IO Type
+getCallerType id = do
+    lvars <- view localVars <$> get
+    let mct = Map.lookup id lvars
+    case mct of
+        (Just ct) -> do
+            io $ print $ "found " ++ id
+            io $ print lvars
+            return ct
+        Nothing   -> do
+            io $ print $ "didn't find anyfin - " ++ id 
+            io $ print lvars
+            return IntT
+    -- return callerType
+
 -- | boilerplate
 
 curClass :: Lens' CmmScope (Maybe Class) 
@@ -360,8 +468,8 @@ curClass = lens _curClass (\x y -> x { _curClass = y })
 curMethod :: Lens' CmmScope (Maybe Method) 
 curMethod = lens _curMethod (\x y -> x { _curMethod = y })
 
-localObjectId   :: Lens' CmmScope (Maybe Identifier)
-localObjectId = lens  _localObjectId (\x y -> x { _localObjectId = y })
+localObjectType   :: Lens' CmmScope (Maybe Identifier)
+localObjectType = lens  _localObjectType (\x y -> x { _localObjectType = y })
 
 symbols :: Lens' CmmScope ST.MiniJavaTable
 symbols = lens  _symbols (\x y -> x { _symbols = y })
@@ -374,6 +482,9 @@ localTemps = lens _localTemps (\x y -> x { _localTemps = y })
 
 curRetTemp   :: Lens' CmmScope CmmExp
 curRetTemp = lens _curRetTemp (\x y -> x { _curRetTemp = y })
+
+localVars   :: Lens' CmmScope (Map.Map Identifier Type)
+localVars = lens _localVars (\x y -> x { _localVars = y })
 
 
 io :: MonadIO m => IO a -> m a 
