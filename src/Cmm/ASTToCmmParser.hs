@@ -135,45 +135,26 @@ stmParserC   (StmExp   e) = expParserC e     >>= moveTemp
 -- 
 ifParserC :: Statement -> CM IO CmmStm
 ifParserC (If e b1 b2) = do
-   (trueL, trueLS)       <- nextLabelLS 
-   (falseL, falseLS)     <- nextLabelLS 
-   (endL, endLS, endLE)  <- nextLabelLSE
-   (relOp, lhsCE, rhsCE) <- relOpParserC e
-   let cjmp   = CJUMP relOp lhsCE rhsCE trueL falseL
-       endjmp = JUMP endLE [endL]
-   trueCS  <- SEQ <$> mapM stmParserC b1
-   falseCS <- SEQ <$> mapM stmParserC (maybe [] id b2)
-   return $ SEQ [cjmp, trueLS, trueCS, endjmp, falseLS, falseCS , endLS] 
+    ce <- expParserC e
+    (trueL, trueLS)       <- nextLabelLS 
+    (falseL, falseLS)     <- nextLabelLS 
+    (endL, endLS, endLE)  <- nextLabelLSE
+    let cjmp   = CJUMP EQ_C ce (CONST 1) trueL falseL
+        endjmp = JUMP endLE [endL]
+    trueCS  <- SEQ <$> mapM stmParserC b1
+    falseCS <- SEQ <$> mapM stmParserC (maybe [] id b2)
+    return $ SEQ [cjmp, trueLS, trueCS, endjmp, falseLS, falseCS, endLS] 
 
 whileParserC :: Statement -> CM IO CmmStm
 whileParserC (While e b) = do
-    (relOp, lhsCE, rhsCE)      <- relOpParserC e
+    ce <- expParserC e
     (startL, startLS, startLE) <- nextLabelLSE
     (whileL, whileLS)          <- nextLabelLS 
-    (endL, endLS)              <- nextLabelLS 
-    let cjmp     = CJUMP relOp lhsCE rhsCE whileL endL
+    (endL, endLS, endLE)       <- nextLabelLSE
+    let cjmp   = CJUMP EQ_C ce (CONST 1) whileL endL
         startjmp = JUMP startLE [startL]
-    whileCS <- SEQ <$> mapM stmParserC b
+    whileCS  <- SEQ <$> mapM stmParserC b
     return $ SEQ [startLS, cjmp, whileLS, whileCS, startjmp, endLS]
-
-relOpParserC :: Expression -> CM IO (CmmRelOp, CmmExp, CmmExp)
-relOpParserC (BinOp e1 op e2) = do
-    case op of
-        LEQ  -> (,,) <$> pure LE_C <*> expParserC e1 <*> expParserC e2
-        LE   -> (,,) <$> pure LT_C <*> expParserC e1 <*> expParserC e2
-        GEQ  -> (,,) <$> pure GE_C <*> expParserC e1 <*> expParserC e2
-        GE   -> (,,) <$> pure GT_C <*> expParserC e1 <*> expParserC e2
-        EQS  -> (,,) <$> pure EQ_C <*> expParserC e1 <*> expParserC e2
-        NEQS -> (,,) <$> pure NE_C <*> expParserC e1 <*> expParserC e2
-        AND  -> undefined
---            case e1 == 1 of
---                True -> case e2 == 1 of
---                            True -> jump to true label
---                            False -> jump to false label
---                False -> jump tp false label
-        OR   -> undefined
-
-
 
 blockstmParserC :: Statement -> CM IO CmmStm
 blockstmParserC (BlockStm stms) = SEQ <$> mapM stmParserC stms
@@ -204,7 +185,7 @@ expParserC (MethodGet callerE mid es) = do
     localObjectType .= Nothing
     return res
 
-expParserC (LitBool b) = return . CONST $ B.bool 1 0 b
+expParserC (LitBool b) = return . CONST $ B.bool 0 1 b
 expParserC (LitInt i)  = return . CONST $ fromIntegral i
 expParserC (StrArr e)  = error "TODO - implement StrArr in expParserC"
 expParserC (IntArr e)  = do
@@ -269,15 +250,24 @@ expParserC (Assign lhs rhs) = do
 
 
 expParserC (BinOp e1 op e2) = do
-    BINOP <$> toCmmBinOp op <*> expParserC e1 <*> expParserC e2
-    where
-        toCmmBinOp PLUS  = return PLUS_C
-        toCmmBinOp MINUS = return MINUS_C
-        toCmmBinOp MUL   = return MUL_C
-        toCmmBinOp DIV   = return DIV_C
-        toCmmBinOp AND   = return AND_C
-        toCmmBinOp OR    = return OR_C
-        toCmmBinOp o@_   = error $ "hjc:ASTToCmmParser:expParserC - " ++ showJC o ++ " is not supported by the provided c-- template"
+    ce1 <- expParserC e1
+    ce2 <- expParserC e2
+    case op of
+       PLUS  -> return $ BINOP PLUS_C  ce1 ce2
+       MINUS -> return $ BINOP MINUS_C ce1 ce2
+       MUL   -> return $ BINOP MUL_C   ce1 ce2
+       DIV   -> return $ BINOP DIV_C   ce1 ce2
+
+       EQS  -> compareWith EQ_C ce1 ce2
+       LE   -> compareWith LT_C ce1 ce2
+       GE   -> compareWith GT_C ce1 ce2
+       LEQ  -> compareWith LE_C ce1 ce2
+       GEQ  -> compareWith GE_C ce1 ce2
+       NEQS -> compareWith NE_C ce1 ce2
+
+       AND  -> andExpParserC ce1 ce2
+       OR   -> orExpParserC  ce1 ce2
+       o@_   -> error $ "hjc:ASTToCmmParser:expParserC - " ++ showJC o ++ " is not implemented yet"
 
 -- TODO check assumpton that blockexpr is always a single expression
 expParserC (BlockExp exps) = do
@@ -321,6 +311,64 @@ withArgLen l m = m { cmmArgLength = l }
 addMethod :: CmmMethod -> CM IO ()
 addMethod m = cmm %= (++ [m])
 
+
+compareWith :: CmmRelOp -> CmmExp -> CmmExp -> CM IO CmmExp
+compareWith op ce1 ce2 = do
+    tempE <- nextTempE
+    (trueL,   trueLS) <- nextLabelLS
+    (falseL, falseLS) <- nextLabelLS
+    (endL, endLS, endLE)  <- nextLabelLSE
+    
+    let cjmp = CJUMP op ce1 ce2 trueL falseL
+        endjmp  = JUMP endLE [endL]
+        trueCS  = MOVE tempE (CONST 1)
+        falseCS = MOVE tempE (CONST 0)
+
+    return $ ESEQ (SEQ [cjmp, trueLS, trueCS, endjmp,
+                              falseLS, falseCS, endLS]) tempE
+
+
+-- | lazy or parser
+--
+orExpParserC :: CmmExp -> CmmExp -> CM IO CmmExp
+orExpParserC ce1 ce2 = do
+
+    tempE <- nextTempE
+    (trueL,   trueLS) <- nextLabelLS
+    (falseL1, falseLS1) <- nextLabelLS
+    (falseL2, falseLS2) <- nextLabelLS
+    (endL, endLS, endLE)  <- nextLabelLSE
+    
+    let cjmpE1 = CJUMP EQ_C ce1 (CONST 1) trueL falseL1
+        cjmpE2 = CJUMP EQ_C ce2 (CONST 1) trueL falseL2
+        endjmp  = JUMP endLE [endL]
+        
+        trueCS  = MOVE tempE (CONST 1)
+        falseCS = MOVE tempE (CONST 0)
+
+    return $ ESEQ (SEQ [cjmpE1, trueLS, trueCS, endjmp,
+                        falseLS1,cjmpE2, falseLS2, falseCS, endLS]) tempE
+
+-- | lazy and  
+--
+andExpParserC :: CmmExp -> CmmExp -> CM IO CmmExp
+andExpParserC ce1 ce2 = do
+
+    tempE <- nextTempE
+    (nextL,   nextLS) <- nextLabelLS
+    (trueL,   trueLS) <- nextLabelLS
+    (falseL, falseLS) <- nextLabelLS
+    (endL, endLS, endLE)  <- nextLabelLSE
+    
+    let cjmpE1 = CJUMP EQ_C ce1 (CONST 1) nextL falseL
+        cjmpE2 = CJUMP EQ_C ce2 (CONST 1) trueL falseL
+        endjmp  = JUMP endLE [endL]
+        
+        trueCS  = MOVE tempE (CONST 1)
+        falseCS = MOVE tempE (CONST 0)
+
+    return $ ESEQ (SEQ [cjmpE1, nextLS, cjmpE2, trueLS, trueCS,
+                                endjmp, falseLS, falseCS, endLS]) tempE
 
 withClass :: Class -> CM IO a -> CM IO ()
 withClass c f = do
