@@ -79,3 +79,7 @@ stack test --test-arguments "--fail-fast"
 ```
 stack test --file-watch --test-arguments "-m "TypeCheck/TypeCheck" --fail-fast"
 ```
+
+
+* Errors
+    * `111`: IndexOutOfBounds 
