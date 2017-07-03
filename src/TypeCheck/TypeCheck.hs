@@ -165,6 +165,7 @@ unify (IndexGet call ix) = do
     case callType of
         IntArrT    -> return IntT
         StringArrT -> return StringT
+        _          -> return objectType
 
 unify (UnOp unop expr) = do
     case unop of

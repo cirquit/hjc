@@ -53,8 +53,8 @@ ast2cmm ast = (view cmm . snd) <$> runNameGenT (runStateT (parseMiniJavaCmm ast)
             , _localObjectType  = Nothing
             , _symbols        = symbols
             , _cmm            = []
-            , _localTemps     = Map.empty
             , _curRetTemp     = TEMP $ mkNamedTemp "mainReturnTemp"
+            , _localTemps     = Map.empty
             , _localVars      = Map.empty
             }
 
@@ -229,12 +229,16 @@ expParserC This = do
     return $ PARAM 0
 
 -- local definiton of a variable is saved to the local temps
--- returning dummy value (not happy with this ast)
 expParserC (LitVar v) = do
-    tempExp <- nextTempE
-    localTemps %= Map.insert (_variableName v) tempExp
-    localVars  %= Map.insert (_variableName v) (_type v) 
-    return tempExp
+    vars <- view localTemps <$> get
+    case Map.lookup (_variableName v) vars of
+        (Just tempExp) -> do
+            return tempExp
+        Nothing        -> do
+            tempExp <- nextTempE
+            localTemps %= Map.insert (_variableName v) tempExp
+            localVars  %= Map.insert (_variableName v) (_type v) 
+            return tempExp
 
 -- identifier has to reference a temporary (locally defined variables or method arguments)
 expParserC (LitIdent id) = do
@@ -245,10 +249,9 @@ expParserC (LitIdent id) = do
         Nothing        -> error $ "hjc:ASTToCmmParser:expParserC - Temporary with id \"" ++ id ++ "\" could not be found"
 
 expParserC (Assign lhs rhs) = do
-    stm <- MOVE <$> expParserC lhs <*> expParserC rhs -- assumption has to hold that any return of lhs should return a temporary (or a param)
     lhsE <- expParserC lhs 
+    stm <- MOVE <$> expParserC lhs <*> expParserC rhs -- assumption has to hold that any return of lhs should return a temporary (or a param)
     return $ ESEQ (SEQ [stm]) lhsE
-
 
 expParserC (BinOp e1 op e2) = do
     ce1 <- expParserC e1
@@ -301,10 +304,7 @@ methodLabel mid exp = do
         (Nothing, LitIdent id) -> do
             
             case Map.lookup id lvars of
-                Nothing -> do
-                    io $ print lvars
-                    io $ print $ "looking for: " ++ show id
-                    error ""
+                Nothing -> error $ "hjc:ASTToCmmParser:methodLabel - couldn't find class label " ++ id ++ " in " ++ show lvars
                 (Just t) -> do
                     return . NAME $ mkLabel (showJC t) ++ '$' : mid
 

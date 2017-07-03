@@ -28,7 +28,7 @@ data CmmExp =
 data CmmStm =
      MOVE   CmmExp  CmmExp
    | JUMP   CmmExp [Label]
-   | CJUMP  CmmRelOp   CmmExp CmmExp Label Label
+   | CJUMP  CmmRelOp CmmExp CmmExp Label Label
    | SEQ   [CmmStm]
    | LABEL  Label
    deriving Eq
