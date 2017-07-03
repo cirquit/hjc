@@ -24,7 +24,7 @@ defaultConfig :: Config
 defaultConfig = Config
     {
       parse'        = True
-    , showAst'      = False 
+    , showAst'      = True 
     , showResult'   = False
     , showTime'     = True
     , compileToCmm  = True 

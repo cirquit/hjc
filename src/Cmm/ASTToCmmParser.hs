@@ -95,6 +95,7 @@ parseMethodCmm :: Method -> CM IO CmmMethod
 parseMethodCmm meth = withMethod meth $ do
     (t, exp) <- nextTempTE
     curRetTemp .= exp
+    n <- methodNameCmm
     CmmMethod <$> methodNameCmm
               <*> methodArgLength
               <*> methodBodyCmm
@@ -291,7 +292,15 @@ expParserC (Return exp) = do
     stm <- MOVE <$> (view curRetTemp <$> get) <*> expParserC exp
     return $ ESEQ stm (CONST 42)
 
-expParserC _ = return $ CONST 404
+-- implementing length member by hand, arrays is a concept of our compiler
+-- at the pointer of the array lies the length member
+expParserC (MemberGet exp "length") = do
+    ce <- expParserC exp
+    return (MEM ce)
+
+expParserC e@_ = do
+    io $ print $ "hjc:ASTToCmmParser:expParserC - " ++ show e ++ " is not implemented yet"
+    return $ CONST 404
 
 -- | takes the method id and assumes that there is a new object local id defined
 --
@@ -300,14 +309,12 @@ methodLabel mid exp = do
     moid  <- view localObjectType <$> get
     lvars <- view localVars <$> get
     case (moid, exp) of
-        (Just oid, _)          -> return . NAME $ mkLabel oid ++ '$' : mid
-        (Nothing, LitIdent id) -> do
-            
+        (_, LitIdent id) -> do
             case Map.lookup id lvars of
                 Nothing -> error $ "hjc:ASTToCmmParser:methodLabel - couldn't find class label " ++ id ++ " in " ++ show lvars
                 (Just t) -> do
                     return . NAME $ mkLabel (showJC t) ++ '$' : mid
-
+        (Just oid, _)    -> return . NAME $ mkLabel oid ++ '$' : mid
         (_, _) -> do
             (Just cls)  <- view curClass  <$> get
             return . NAME $ mkLabel (_className cls) ++ '$' : mid
