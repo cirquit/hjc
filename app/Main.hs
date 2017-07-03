@@ -24,10 +24,11 @@ defaultConfig :: Config
 defaultConfig = Config
     {
       parse'        = True
-    , showAst'      = True 
+    , showAst'      = False 
     , showResult'   = False
     , showTime'     = True
-    , compileToCmm  = True 
+    , compileToCmm  = True
+    , canonizeCmm   = True
     , javaOutputDir = "../output"
     , cmmOutputDir  = "../cmm-output"
     , typeErrLvl    = AllErrors -- FirstError -- Silently 

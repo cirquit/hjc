@@ -17,6 +17,7 @@ data Config = Config {
   , showAst'      :: Bool
   , showResult'   :: Bool
   , showTime'     :: Bool
+  , canonizeCmm   :: Bool
   , compileToCmm  :: Bool
   , javaOutputDir :: FilePath
   , cmmOutputDir  :: FilePath

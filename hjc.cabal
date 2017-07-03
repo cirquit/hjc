@@ -30,6 +30,9 @@ library
                      , Cmm.CAST
                      , Cmm.ASTToCmmParser
                      , Cmm.CmmParserCore
+                     , Cmm.Canon
+                     , Cmm.I386Instr
+                     , Cmm.Backend
   build-depends:       base         >= 4.7     && < 5
                      , megaparsec   >= 5.2.0   && < 6
                      , containers   >= 0.5.7.1 && < 6

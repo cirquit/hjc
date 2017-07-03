@@ -48,14 +48,14 @@ ast2cmm ast = (view cmm . snd) <$> runNameGenT (runStateT (parseMiniJavaCmm ast)
         --
         cmmScope :: CmmScope
         cmmScope = CmmScope
-            { _curClass       = Nothing
-            , _curMethod      = Nothing
-            , _localObjectType  = Nothing
-            , _symbols        = symbols
-            , _cmm            = []
-            , _curRetTemp     = TEMP $ mkNamedTemp "mainReturnTemp"
-            , _localTemps     = Map.empty
-            , _localVars      = Map.empty
+            { _curClass        = Nothing
+            , _curMethod       = Nothing
+            , _localObjectType = Nothing
+            , _symbols         = symbols
+            , _cmm             = []
+            , _curRetTemp      = TEMP $ mkNamedTemp "t1234567890" -- the debugger assumes this notation
+            , _localTemps      = Map.empty
+            , _localVars       = Map.empty
             }
 
         -- | computing this twice, here and in TypeCheck.hs, this should be cached

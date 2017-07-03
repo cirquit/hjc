@@ -16,7 +16,8 @@ import           Control.Monad                      (when)
 import           AST
 import           Config
 import           TypeCheck.TCCore                    (TypeScope(), TypeError(..), successful, errors)
-import           Cmm.ASTToCmmParser                  (ast2cmms)
+import           Cmm.ASTToCmmParser                  (ast2cmms, ast2cmm)
+import           Cmm.Canon                           (cmm2canons)
 
 data OutputInfo = OutputInfo {
     fileName    :: String
@@ -152,11 +153,17 @@ writeJavaOutput (OutputInfo inputName _ _ (Just ast) _ _) conf = do
 writeCmmOutput :: OutputInfo -> Config -> IO ()
 writeCmmOutput (OutputInfo inputName _ _ (Just ast) _ _) conf = when (compileToCmm conf) $ do
     let _ : name : _ = reverse <$> (LS.splitOneOf "./" $ reverse inputName)
-    let outputName = (cmmOutputDir conf) </> (name ++ ".tree")
-    result <- ast2cmms ast
+    (outputName, result) <- do
+        case (canonizeCmm conf) of
+            True ->  do 
+                let outputName = (cmmOutputDir conf) </> (name ++ "-canonized.tree")
+                result <- cmm2canons =<< ast2cmm ast 
+                return (outputName, result)
+            False -> do
+                let outputName = (cmmOutputDir conf) </> (name ++ ".tree")
+                result <- ast2cmms ast
+                return (outputName, result)
     writeFile outputName result
     putChunk $ (chunk ">> ")
     putChunk $ (chunk "Written: ") & fore green
     putChunk $ (chunk outputName) <> (chunk "\n") & bold
-
-
