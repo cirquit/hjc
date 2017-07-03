@@ -80,6 +80,19 @@ stack test --test-arguments "--fail-fast"
 stack test --file-watch --test-arguments "-m "TypeCheck/TypeCheck" --fail-fast"
 ```
 
-
 * Errors
-    * `111`: IndexOutOfBounds 
+    * `111`: IndexOutOfBounds
+
+* Debug with `gdb`
+```haskell
+> gdb ./testprog
+
+>>> tui enable  -- enables a terminal ui
+>>> refresh     -- redraws the tui
+
+>>> b Lmain     -- set breakpoint at function Lmain
+>>> n           -- next
+>>> print var   -- shows var
+>>> backtrace   -- shows stacktrace
+>>> quit
+```

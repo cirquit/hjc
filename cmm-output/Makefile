@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-m32 -w
+CFLAGS=-m32 -w -g
 OUTPUT=testprog
 LIB=lib/runtime.c
 

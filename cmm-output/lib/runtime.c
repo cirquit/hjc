@@ -30,7 +30,7 @@ int32_t L_print_char(int32_t n)
 // Abort the execution with an error code
 int32_t L_raise(int32_t rc)
 {
-  fprintf(stderr, "Program terminated with error code %" PRId32 ,rc);
+  fprintf(stderr, "Program terminated with error code %d\n" PRId32 ,rc);
   exit(rc);
   return 0;
 }
