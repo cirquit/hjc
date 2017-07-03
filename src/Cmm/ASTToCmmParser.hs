@@ -26,9 +26,9 @@ data CmmScope = CmmScope
     , _localObjectType  :: Maybe Identifier
     , _symbols          :: ST.MiniJavaTable
     , _cmm              :: Cmm
-    , _localTemps       :: Map.Map Identifier CmmExp  -- (CmmExp == TEMP, PARAM(i), MEM(PARAM + n*4))
     , _curRetTemp       :: CmmExp
-    , _localVars        :: Map.Map Identifier Type    -- variable type mapping for naming of methods
+    , _localTemps       :: Map.Map Identifier CmmExp  -- (CmmExp == TEMP, PARAM(i), MEM(PARAM + n*4))
+    , _localVars        :: Map.Map Identifier Type    -- variable type mapping for naming of methods, not happy with two maps
     }
 
 -- | C-- Monad
@@ -89,6 +89,7 @@ addClassVariablesToScope vars = do
     insertMemoryPaddedVar (v, i) = do
         let memExp = MEM $ BINOP PLUS_C (PARAM 0) (CONST (i * 4))
         localTemps %= Map.insert (_variableName v) memExp 
+        localVars  %= Map.insert (_variableName v) (_type v)
 
 parseMethodCmm :: Method -> CM IO CmmMethod
 parseMethodCmm meth = withMethod meth $ do
@@ -187,7 +188,7 @@ expParserC (MethodGet callerE mid es) = do
 
 expParserC (LitBool b) = return . CONST $ B.bool 0 1 b
 expParserC (LitInt i)  = return . CONST $ fromIntegral i
-expParserC (StrArr e)  = error "TODO - implement StrArr in expParserC"
+expParserC (StrArr e)  = error $ "hjc:ASTToCmmParser:expParserC - String arrays are not implemented yet"
 expParserC (IntArr e)  = do
    arrLenE     <- expParserC e
    arrMemoryCE <- calculateIntArrMemoryCost arrLenE
@@ -267,7 +268,13 @@ expParserC (BinOp e1 op e2) = do
 
        AND  -> andExpParserC ce1 ce2
        OR   -> orExpParserC  ce1 ce2
-       o@_   -> error $ "hjc:ASTToCmmParser:expParserC - " ++ showJC o ++ " is not implemented yet"
+       o@_   -> error $ "hjc:ASTToCmmParser:expParserC - binary operation " ++ showJC o ++ " is not implemented yet"
+
+expParserC (UnOp op e) = do
+    ce <- expParserC e
+    case op of
+        NOT -> compareWith LT_C ce (CONST 1) -- true = CONST 1, false = CONST 0
+        o@_ -> error $  "hjc:ASTToCmmParser:expParserC - unary operation " ++ showJC o ++ " is not implemented yet"
 
 -- TODO check assumpton that blockexpr is always a single expression
 expParserC (BlockExp exps) = do
@@ -292,8 +299,15 @@ methodLabel mid exp = do
     case (moid, exp) of
         (Just oid, _)          -> return . NAME $ mkLabel oid ++ '$' : mid
         (Nothing, LitIdent id) -> do
-            let (Just t) = Map.lookup id lvars
-            return . NAME $ mkLabel (showJC t) ++ '$' : mid
+            
+            case Map.lookup id lvars of
+                Nothing -> do
+                    io $ print lvars
+                    io $ print $ "looking for: " ++ show id
+                    error ""
+                (Just t) -> do
+                    return . NAME $ mkLabel (showJC t) ++ '$' : mid
+
         (_, _) -> do
             (Just cls)  <- view curClass  <$> get
             return . NAME $ mkLabel (_className cls) ++ '$' : mid
@@ -468,8 +482,10 @@ addArgumentsToScope :: CM IO ()
 addArgumentsToScope = do
     (Just meth) <- view curMethod <$> get
     let argsNames = map _variableName (_methodArguments meth)
+        argsTypes = map _type         (_methodArguments meth)
         argsExps  = map PARAM [1..]
     zipWithM_ (\name exp -> localTemps %= Map.insert name exp) argsNames argsExps
+    zipWithM_ (\name typ -> localVars  %= Map.insert name typ) argsNames argsTypes
 
 -- | our solution to 'run' a CmmExp
 evalCExpE :: CmmExp -> CM IO CmmExp
@@ -496,17 +512,8 @@ indexOutOfBounds = return $ CONST 111
 getCallerType :: Identifier -> CM IO Type
 getCallerType id = do
     lvars <- view localVars <$> get
-    let mct = Map.lookup id lvars
-    case mct of
-        (Just ct) -> do
-            io $ print $ "found " ++ id
-            io $ print lvars
-            return ct
-        Nothing   -> do
-            io $ print $ "didn't find anyfin - " ++ id 
-            io $ print lvars
-            return IntT
-    -- return callerType
+    let (Just callerType) = Map.lookup id lvars
+    return callerType
 
 -- | boilerplate
 
