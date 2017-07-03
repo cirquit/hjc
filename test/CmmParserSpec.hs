@@ -1,0 +1,123 @@
+module CmmParserSpec (main, spec) where
+
+import AST
+import ASTParser
+import TypeCheck.TypeCheck
+import qualified TypeCheck.TCCore as T
+import Output
+import Config
+
+import Test.Hspec
+import Test.QuickCheck
+import Control.Exception (evaluate)
+import Control.Monad
+import Text.Megaparsec
+import System.Process
+import System.Exit
+
+
+main :: IO ()
+main = hspec spec
+
+
+
+
+
+spec :: Spec
+spec = do
+    describe "CmmParser" $ do
+        describe "should be successful for small test" $ do
+            let showTypeErrors      = True
+                successfulTitle     = "should have zero length of typescope errors in "
+                pathToTestFile      = "test/examples/MiniJava_Examples/Small/"
+                successfulFileNames = [
+                      "ArrayAccess"
+                    , "ArrSum"
+                    , "Effects"
+                    , "Factorial"
+                    , "Precedence"
+                    , "Scope2"
+                    , "ShortCutAnd"
+                    , "Stck"
+                    , "Sum"
+                    , "TestEq"
+                    , "TrivialClass"
+                    , "While"
+                    ]
+
+                testList            = zip successfulFileNames (iterate id successfulTitle)
+
+            mapM_ (\(input, title) -> it (title ++ input) $ do
+                let inputFile = "test/examples/MiniJava_Examples/Small/" ++ input ++ ".java"
+                hasTypeErrors inputFile False
+                makeC input >>= \b -> b `shouldBe` ExitSuccess) testList
+
+        describe "should be successful for large test" $ do
+            let showTypeErrors      = True
+                successfulTitle     = "should have zero length of typescope errors in "
+                pathToTestFile      = "test/examples/MiniJava_Examples/Large/"
+                successfulFileNames = [
+                      "BinarySearch"
+                    , "BinaryTree"
+                    , "BubbleSort"
+                    , "Fib"
+                    , "FibL"
+                    , "Graph"
+                    , "LinearSearch"
+                    , "LinkedList"
+                    , "ManyArgs"
+                    , "Newton"
+                    , "Primes"
+                    , "QuickSort"
+                    ]
+
+                testList            = zip successfulFileNames (iterate id successfulTitle)
+
+            mapM_ (\(input, title) -> it (title ++ input) $ do
+                let inputFile = "test/examples/MiniJava_Examples/Large/" ++ input ++ ".java"
+                hasTypeErrors inputFile False
+                makeC input >>= \b -> b `shouldBe` ExitSuccess) testList
+
+
+makeC :: String -> IO ExitCode
+makeC inputFile = do
+    (_, Just hout, _, ph) <- createProcess (proc "make" ["file=" ++ inputFile ++ ".tree"]){ cwd = Just "cmm-output", std_out = CreatePipe }
+    eC <- waitForProcess ph
+    (_, _, _, cleanH) <- createProcess (proc "make" ["clean"]){ cwd = Just "cmm-output", std_out = CreatePipe }
+    _ <- waitForProcess cleanH
+    return eC
+
+
+testConfig :: Config
+testConfig = Config
+    {
+      parse'        = True
+    , showAst'      = False
+    , showResult'   = False
+    , showTime'     = True
+    , compileToCmm  = True 
+    , javaOutputDir = "output"
+    , cmmOutputDir  = "cmm-output"
+    , typeErrLvl   = AllErrors -- FirstError -- Silently 
+    }
+
+hasTypeErrors :: String -> Bool -> IO Bool
+hasTypeErrors inputFile showTypeErrors = do
+    input <- readFile inputFile
+    let eres = runParser testParser inputFile input
+    case eres of
+        (Left errors) -> do
+            let oi = failed inputFile input (-1) errors
+            showFailure oi testConfig
+            return False
+        (Right ast)   -> do
+            typescope <- typecheck ast
+            let oi = success inputFile input (0::Double) ast typescope
+            writeCmmOutput  oi testConfig
+            when showTypeErrors $ showErrors typescope
+            return $ (0 < (length $ T._errors typescope))
+
+
+showErrors :: T.TypeScope -> IO ()
+showErrors typescope = do
+    mapM_ (uncurry showTE) $ zip (T._errors typescope) [1..]
