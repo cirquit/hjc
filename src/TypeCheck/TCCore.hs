@@ -12,7 +12,7 @@ import           AST
 import qualified SymbolTable                  as ST
 
 -- boilerplate
-io :: MonadIO m => IO a -> m a 
+io :: MonadIO m => IO a -> m a
 io = liftIO
 
 type Scope = Map.Map Identifier Type
