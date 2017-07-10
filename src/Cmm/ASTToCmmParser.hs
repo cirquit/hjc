@@ -119,7 +119,7 @@ stmParserC   (Print    e) = printParserC e   >>= moveTemp
 stmParserC   (StmExp   e) = expParserC e     >>= moveTemp
 
 -- generates 3 labels, if-branch, else-branch and end-case
--- 
+--
 ifParserC :: Statement -> CM IO CmmStm
 ifParserC (If e b1 b2) = do
     ce <- expParserC e
@@ -187,7 +187,7 @@ expParserC (IntArr e)  = do
 expParserC (IndexGet e ix) = do
     callerCE <- expParserC e -- this is the pointer to the array, and the first element is the length
     ixCE     <- expParserC ix
-    
+
     indexByteTempE <- nextTempE
     let indexByteOffsetCE = MOVE indexByteTempE $
                                BINOP MUL_C
@@ -324,7 +324,7 @@ compareWith op ce1 ce2 = do
     (trueL,   trueLS) <- nextLabelLS
     (falseL, falseLS) <- nextLabelLS
     (endL, endLS, endLE)  <- nextLabelLSE
-    
+
     let cjmp = CJUMP op ce1 ce2 trueL falseL
         endjmp  = JUMP endLE [endL]
         trueCS  = MOVE tempE (CONST 1)
@@ -344,18 +344,18 @@ orExpParserC ce1 ce2 = do
     (falseL1, falseLS1) <- nextLabelLS
     (falseL2, falseLS2) <- nextLabelLS
     (endL, endLS, endLE)  <- nextLabelLSE
-    
+
     let cjmpE1 = CJUMP EQ_C ce1 (CONST 1) trueL falseL1
         cjmpE2 = CJUMP EQ_C ce2 (CONST 1) trueL falseL2
         endjmp  = JUMP endLE [endL]
-        
+
         trueCS  = MOVE tempE (CONST 1)
         falseCS = MOVE tempE (CONST 0)
 
     return $ ESEQ (SEQ [cjmpE1, trueLS, trueCS, endjmp,
                         falseLS1,cjmpE2, falseLS2, falseCS, endLS]) tempE
 
--- | lazy and  
+-- | lazy and
 --
 andExpParserC :: CmmExp -> CmmExp -> CM IO CmmExp
 andExpParserC ce1 ce2 = do
