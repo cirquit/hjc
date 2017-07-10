@@ -20,9 +20,8 @@ import System.Directory (listDirectory, createDirectoryIfMissing, doesFileExist)
 import System.FilePath.Posix ((</>))
 import System.Environment
 
-defaultConfig :: Config
-defaultConfig = Config
-    {
+mainConfig :: Config
+mainConfig = defaultConfig  {
       parse'        = True
     , showAst'      = False 
     , showResult'   = False

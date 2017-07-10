@@ -24,6 +24,19 @@ data Config = Config {
   , typeErrLvl    :: TypeErrorLevel
 } deriving (Show)
 
+defaultConfig :: Config
+defaultConfig = Config {
+    parse'        = True
+  , showAst'      = False
+  , showResult'   = False
+  , showTime'     = True
+  , canonizeCmm   = False
+  , compileToCmm  = False
+  , javaOutputDir = "output"
+  , cmmOutputDir  = "cmm-output"
+  , typeErrLvl    = AllErrors
+}
+
 
 data CmdParam = CmdParam {
     path        :: String
@@ -45,3 +58,6 @@ cmdP = do
 
 identifier :: Parser String
 identifier = (:) <$> (alphaNumChar <|> char '.') <*> many (alphaNumChar <|> char '.' <|> char '/' <|> char '_')
+
+
+

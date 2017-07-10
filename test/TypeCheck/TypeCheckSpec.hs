@@ -111,8 +111,7 @@ spec = do
 
 
 testConfig :: Config
-testConfig = Config
-    {
+testConfig = defaultConfig {
       parse'        = True
     , showAst'      = False
     , showResult'   = False
