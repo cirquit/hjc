@@ -108,8 +108,6 @@ spec = do
             mapM_ (\(input, title) -> it (title ++ input) $ do
                 hasTypeErrors input showTypeErrors >>= \b -> b `shouldBe` True) testList
 
-
-
 testConfig :: Config
 testConfig = defaultConfig {
       parse'        = True

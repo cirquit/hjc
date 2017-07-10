@@ -2,7 +2,7 @@
 module Cmm.I386Instr where
 
 import Cmm.LabelGenerator
-import Cmm.Backend (MachineInstr(..))
+import Cmm.Backend          (MachineInstr(..), MachineFunction(..), MachinePrg(..))
 import Data.Int
 
 data UnaryInstr = PUSH
@@ -12,6 +12,7 @@ data UnaryInstr = PUSH
                 | INC
                 | DEC
                 | IDIV
+    deriving Show
 
 data BinayInstr = MOV
                 | ADD
@@ -27,20 +28,31 @@ data BinayInstr = MOV
                 | CMP
                 | LEA
                 | IMUL
+    deriving Show
 
 data Cond = E | NE | L | LE | G | GE | Z
+  deriving Show
 
 data Scale = S2 | S4 | S8 -- possible scaling values for effective addressing
+  deriving Show
+
+scaleToInt :: Scale -> Int
+scaleToInt S2 = 2
+scaleToInt S4 = 4
+scaleToInt S8 = 8
+
+
 
 data EffectiveAddress = EffectiveAddress
    { base         :: Maybe Temp
    , indexScale   :: Maybe (Temp, Scale)
    , displacement :: Int
-   }
+   } deriving Show
 
 data Operand = Imm Int32
              | Reg Temp
              | Mem EffectiveAddress
+    deriving Show
 
 data X86Instr = Unary UnaryInstr Operand
               | Binary BinayInstr Operand Operand
@@ -51,13 +63,74 @@ data X86Instr = Unary UnaryInstr Operand
               | CALL Label
               | RET
               | NOP
+    deriving Show
 
+data X86Func = X86Func {
+    x86functionName :: String
+  , x86body         :: [X86Instr]
+  } deriving Show
+
+data X86Prog = X86Prog {
+    x86functions :: [X86Func]
+  } deriving Show
+
+-- | bypassing non exisiting module system of haskell
+data X86CodeGen = X86CodeGen
+
+
+-- | Instance definition for X86 Backend
+
+-- |                   p       f        i 
+instance MachinePrg X86Prog X86Func X86Instr  where
+
+--  machinePrgFunctions :: p -> [f] 
+    machinePrgFunctions p = x86functions p
+
+--  replaceFunctions :: p -> [f] -> p 
+    replaceFunctions p fs = undefined
+
+
+-- |                        f       i
+instance MachineFunction X86Func X86Instr where
+
+--  machineFunctionName  :: f -> String
+    machineFunctionName f = x86functionName f
+
+--  machineFunctionBody  :: f -> [i]
+    machineFunctionBody f = x86body f
+
+--  machineFunctionRename :: f -> (Temp -> Temp) -> f
+    machineFunctionRename f replaceTemp = undefined
+
+--  machineFunctionSpill :: MonadNameGen m => f -> [Temp] -> m f
+    machineFunctionSpill f ts = undefined
+    
+
+-- |                     i
 instance MachineInstr X86Instr where
-  def _                = error "needed later for register allocation"
-  use _                = error "needed later for register allocation"
-  isMoveBetweenTemps _ = error "needed later for register allocation"
-  isAssignmentToTemp _ = error "needed later for register allocation"
-  jumps _              = error "needed later for register allocation"
-  isFallThrough _      = error "needed later for register allocation"
-  isLabel _            = error "needed later for register allocation"
-  renameInstr _        = error "needed later for register allocation"
+
+--  use  :: i -> [Temp] 
+    use _                = undefined
+
+--  def  :: i -> [Temp]
+    def _                = undefined
+
+--  isMoveBetweenTemps :: i -> Maybe (Temp, Temp)
+    isMoveBetweenTemps _ = undefined
+
+--  isAssignmentToTemp :: i -> Maybe Temp
+    isAssignmentToTemp _ = undefined
+
+--  jumps :: i -> [Label]
+    jumps _              = undefined
+
+--  isFallThrough :: i -> Bool
+    isFallThrough _      = undefined
+
+--  isLabel :: i -> Maybe Label
+    isLabel _            = undefined
+
+--  renameInstr :: i -> (Temp -> Temp) -> i
+    renameInstr _        = undefined
+
+

@@ -3,6 +3,7 @@ module Cmm.Backend where
 
 import Cmm.CAST (Cmm)
 import Cmm.LabelGenerator (Temp, Label, MonadNameGen)
+import Control.Monad.IO.Class
 
 class MachineInstr i where
   use  :: i -> [Temp]
@@ -25,6 +26,6 @@ class (MachineInstr i, MachineFunction f i, Show p) => MachinePrg p f i | p -> f
   replaceFunctions :: p -> [f] -> p
 
 class (MachineInstr i, MachineFunction f i, MachinePrg p f i) => CodeGen c p f i | c -> p f i where
-  codeGen :: MonadNameGen m => c -> Cmm -> m p
+  codeGen :: (MonadNameGen m, MonadIO m) => c -> Cmm -> m p
   allRegisters :: c -> [Temp]
   generalPurposeRegisters :: c -> [Temp]
