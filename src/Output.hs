@@ -17,7 +17,13 @@ import           AST
 import           Config
 import           TypeCheck.TCCore                    (TypeScope(), TypeError(..), successful, errors)
 import           Cmm.ASTToCmmParser                  (ast2cmms, ast2cmm)
-import           Cmm.Canon                           (cmm2canons)
+import           Cmm.Canon                           (cmm2canons, cmm2canon)
+import           Cmm.X86Backend.X86Backend
+import           Cmm.Backend
+import           Cmm.I386Instr                    
+import           Cmm.LabelGenerator
+
+
 
 data OutputInfo = OutputInfo {
     fileName    :: String
@@ -164,6 +170,18 @@ writeCmmOutput (OutputInfo inputName _ _ (Just ast) _ _) conf = when (compileToC
                 result <- ast2cmms ast
                 return (outputName, result)
     writeFile outputName result
+    putChunk $ (chunk ">> ")
+    putChunk $ (chunk "Written: ") & fore green
+    putChunk $ (chunk outputName) <> (chunk "\n") & bold
+
+
+writeX86Output :: OutputInfo -> Config -> IO ()
+writeX86Output (OutputInfo inputName _ _ (Just ast) _ _) conf = when (compileToX86 conf) $ do
+    let _ : name : _ = reverse <$> (LS.splitOneOf "./" $ reverse inputName)
+        outputName = (x86OutputDir conf) </> (name ++ ".s")
+    cmmResult <- cmm2canon =<< ast2cmm ast 
+    result    <- runNameGenT $ codeGen X86CodeGen cmmResult 
+    writeFile outputName (show result)
     putChunk $ (chunk ">> ")
     putChunk $ (chunk "Written: ") & fore green
     putChunk $ (chunk outputName) <> (chunk "\n") & bold

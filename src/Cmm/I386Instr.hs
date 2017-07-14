@@ -12,7 +12,10 @@ data UnaryInstr = PUSH
                 | INC
                 | DEC
                 | IDIV
-    deriving Show
+
+instance Show UnaryInstr where
+  show PUSH = "push"
+  show POP  = "pop"
 
 data BinayInstr = MOV
                 | ADD
@@ -28,7 +31,9 @@ data BinayInstr = MOV
                 | CMP
                 | LEA
                 | IMUL
-    deriving Show
+
+instance Show BinayInstr where
+    show MOV = "mov"
 
 data Cond = E | NE | L | LE | G | GE | Z
   deriving Show
@@ -52,7 +57,6 @@ data EffectiveAddress = EffectiveAddress
 data Operand = Imm Int32
              | Reg Temp
              | Mem EffectiveAddress
-    deriving Show
 
 data X86Instr = Unary UnaryInstr Operand
               | Binary BinayInstr Operand Operand
@@ -63,16 +67,35 @@ data X86Instr = Unary UnaryInstr Operand
               | CALL Label
               | RET
               | NOP
-    deriving Show
 
 data X86Func = X86Func {
     x86functionName :: String
   , x86body         :: [X86Instr]
-  } deriving Show
+  } 
 
 data X86Prog = X86Prog {
     x86functions :: [X86Func]
-  } deriving Show
+  }
+
+instance Show X86Prog where
+
+    show p = concat ["\t.intel_syntax\n\t", ".global Lmain\n"]
+          ++ concatMap (\x -> show x ++ "\n\t") (x86functions p)
+            -- unlines $ map (\x -> show x ++ "\n") (x86functions p)
+
+
+instance Show X86Func where
+    show f = x86functionName f ++ ":\n\t" ++
+             concatMap (\x -> show x ++ "\n\t") (x86body f)
+
+instance Show X86Instr where
+    show (Unary u o) = show u ++ ' ' : show o
+    show (Binary b o1 o2) = show b ++ ' ' : show o1 ++ ", " ++ show o2
+    show (LABEL l)        = l ++ ":"
+    show RET            = "ret"
+
+instance Show Operand where
+    show (Reg t)          = show t
 
 -- | bypassing non exisiting module system of haskell
 data X86CodeGen = X86CodeGen

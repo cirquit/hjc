@@ -19,8 +19,10 @@ data Config = Config {
   , showTime'     :: Bool
   , canonizeCmm   :: Bool
   , compileToCmm  :: Bool
+  , compileToX86  :: Bool
   , javaOutputDir :: FilePath
   , cmmOutputDir  :: FilePath
+  , x86OutputDir  :: FilePath
   , typeErrLvl    :: TypeErrorLevel
 } deriving (Show)
 
@@ -32,8 +34,10 @@ defaultConfig = Config {
   , showTime'     = True
   , canonizeCmm   = False
   , compileToCmm  = False
+  , compileToX86  = False
   , javaOutputDir = "output"
   , cmmOutputDir  = "cmm-output"
+  , x86OutputDir  = "x86-output"
   , typeErrLvl    = AllErrors
 }
 

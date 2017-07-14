@@ -28,8 +28,10 @@ mainConfig = defaultConfig  {
     , showTime'     = True
     , compileToCmm  = True
     , canonizeCmm   = True
+    , compileToX86  = True
     , javaOutputDir = "../output"
     , cmmOutputDir  = "../cmm-output"
+    , x86OutputDir  = "../x86-output"
     , typeErrLvl    = AllErrors -- FirstError -- Silently 
     }
 
@@ -57,7 +59,7 @@ main = do
 main' :: FilePath -> IO ()
 main' fp = do
     let inputFiles = [ "../examples/" ++ fp ++ ".java" ]
-    mapM_ (evaluateSLProgram defaultConfig) inputFiles 
+    mapM_ (evaluateSLProgram mainConfig) inputFiles 
 
 -- run examples that should fail (logically, not lexically)
 main'' :: IO ()
@@ -94,6 +96,7 @@ evaluateSLProgram config inputFile = do
             -- parsing ast to java
             writeJavaOutput oi config
             writeCmmOutput  oi config
+            writeX86Output  oi config
 
             showTime oi config
 
