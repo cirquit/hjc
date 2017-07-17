@@ -58,7 +58,7 @@ data Cond = E | NE | L | LE | G | GE | Z
 data Scale = S2 | S4 | S8 -- possible scaling values for effective addressing
   deriving Show
 
-scaleToInt :: Scale -> Int
+scaleToInt :: Scale -> Int32
 scaleToInt S2 = 2
 scaleToInt S4 = 4
 scaleToInt S8 = 8
@@ -66,18 +66,8 @@ scaleToInt S8 = 8
 data EffectiveAddress = EffectiveAddress
    { base         :: Maybe Temp
    , indexScale   :: Maybe (Temp, Scale)
-   , displacement :: Int
+   , displacement :: Int32
    }
-
-instance Show EffectiveAddress where
-  
-    show ea = 
-        let c = show (displacement ea) in
-        case (base ea, indexScale ea) of
-            (Just bt, Just (t, s)) -> show bt ++ " * " ++ show t ++ "*" ++ show s ++ " + " ++ c
-            (_,       Just (t, s)) ->                     show t ++ "*" ++ show s ++ " + " ++ c
-            (Just bt, _)           -> show bt                                     ++ " + " ++ c
-            (_, _)                 -> c
 
 data Operand = Imm Int32
              | Reg Temp
@@ -111,13 +101,30 @@ instance Show X86Func where
              concatMap (\x -> show x ++ "\n\t") (x86body f)
 
 instance Show X86Instr where
-    show (Unary u o) = show u ++ ' ' : show o
+    show (Unary u o)      = show u ++ ' ' : show o
     show (Binary b o1 o2) = show b ++ ' ' : show o1 ++ ", " ++ show o2
     show (LABEL l)        = l ++ ":"
-    show RET            = "ret"
+    show RET              = "ret"
+    show CDQ              = "cdq"
+    show (JMP l)          = "jmp " ++ l
+    show (J cond l)       = "j " ++ show cond ++ " " ++ l
+    show (CALL l)         = "call " ++ l
+    show NOP              = ""
 
 instance Show Operand where
-    show (Reg t)          = show t
+    show (Reg t)   = show t
+    show (Imm i32) = show i32
+    show (Mem ea)  = show ea
+
+instance Show EffectiveAddress where
+  
+    show ea = 
+        let c = show (displacement ea) in
+        case (base ea, indexScale ea) of
+            (Just bt, Just (t, s)) -> "[" ++ show bt ++ " + " ++ show t ++ "*" ++ show s ++ " + " ++ c ++ "]"
+            (_,       Just (t, s)) -> "[" ++                     show t ++ "*" ++ show s ++ " + " ++ c ++ "]"
+            (Just bt, _)           -> "[" ++ show bt                                     ++ " + " ++ c ++ "]"
+            (_, _)                 -> "[" ++                                                         c ++ "]"
 
 -- | bypassing non exisiting module system of haskell
 data X86CodeGen = X86CodeGen

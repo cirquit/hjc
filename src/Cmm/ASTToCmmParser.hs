@@ -80,7 +80,6 @@ parseMethodCmm :: Method -> CM IO CmmMethod
 parseMethodCmm meth = withMethod meth $ do
     (t, exp) <- nextTempTE
     curRetTemp .= exp
-    n <- methodNameCmm
     CmmMethod <$> methodNameCmm
               <*> methodArgLength
               <*> methodBodyCmm
