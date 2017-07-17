@@ -114,15 +114,15 @@ cmmExp2x86Instr exp = error $ "X86Backend.cmmExp2x86Instr - " ++ show exp ++ " i
 
 -- base pointer (register)
 ebp :: Operand
-ebp = Reg $ mkNamedTemp "ebp"
+ebp = Reg $ mkNamedTemp "%ebp"
 
 -- stack pointer (register)
 esp :: Operand
-esp = Reg $ mkNamedTemp "esp"
+esp = Reg $ mkNamedTemp "%esp"
 
 -- return register
 eax :: Operand
-eax = Reg $ mkNamedTemp "eax"
+eax = Reg $ mkNamedTemp "%eax"
 
 
 header   :: Lens' X86State String

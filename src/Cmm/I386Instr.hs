@@ -16,6 +16,11 @@ data UnaryInstr = PUSH
 instance Show UnaryInstr where
   show PUSH = "push"
   show POP  = "pop"
+  show NEG  = "neg"
+  show NOT  = "not"
+  show INC  = "inc"
+  show DEC  = "dec"
+  show IDIV = "idiv"
 
 data BinayInstr = MOV
                 | ADD
@@ -33,7 +38,19 @@ data BinayInstr = MOV
                 | IMUL
 
 instance Show BinayInstr where
-    show MOV = "mov"
+    show MOV  = "mov"
+    show ADD  = "add"
+    show SUB  = "sub"
+    show SHL  = "shl"
+    show SAL  = "sal"
+    show SAR  = "sar"
+    show AND  = "and"
+    show OR   = "or"
+    show XOR  = "xor"
+    show TEST = "test"
+    show CMP  = "cmp"
+    show LEA  = "lea"
+    show IMUL = "imul"
 
 data Cond = E | NE | L | LE | G | GE | Z
   deriving Show
@@ -46,13 +63,21 @@ scaleToInt S2 = 2
 scaleToInt S4 = 4
 scaleToInt S8 = 8
 
-
-
 data EffectiveAddress = EffectiveAddress
    { base         :: Maybe Temp
    , indexScale   :: Maybe (Temp, Scale)
    , displacement :: Int
-   } deriving Show
+   }
+
+instance Show EffectiveAddress where
+  
+    show ea = 
+        let c = show (displacement ea) in
+        case (base ea, indexScale ea) of
+            (Just bt, Just (t, s)) -> show bt ++ " * " ++ show t ++ "*" ++ show s ++ " + " ++ c
+            (_,       Just (t, s)) ->                     show t ++ "*" ++ show s ++ " + " ++ c
+            (Just bt, _)           -> show bt                                     ++ " + " ++ c
+            (_, _)                 -> c
 
 data Operand = Imm Int32
              | Reg Temp
@@ -78,11 +103,8 @@ data X86Prog = X86Prog {
   }
 
 instance Show X86Prog where
-
-    show p = concat ["\t.intel_syntax\n\t", ".global Lmain\n"]
+    show p = concat ["\t.intel_syntax noprefix\n\t", ".global Lmain\n"]
           ++ concatMap (\x -> show x ++ "\n\t") (x86functions p)
-            -- unlines $ map (\x -> show x ++ "\n") (x86functions p)
-
 
 instance Show X86Func where
     show f = x86functionName f ++ ":\n\t" ++

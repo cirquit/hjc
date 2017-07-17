@@ -4,9 +4,9 @@ OUTPUT=testprog
 LIB=lib/runtime.c
 
 all:
-	$(CC) $(CFLAGS) testprog.s $(LIB) -o $(OUTPUT) && \
+	$(CC) $(CFLAGS) $(file) $(LIB) -o $(OUTPUT) && \
 			echo 'Output of ./testprog:' && ./testprog
 
 clean:
-	-rm *.c
+	-rm *.s
 	-rm testprog
