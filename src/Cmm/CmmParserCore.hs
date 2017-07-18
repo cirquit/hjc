@@ -2,9 +2,11 @@ module Cmm.CmmParserCore where
 
 import qualified Data.Map                   as Map
 import           Data.Int
+import           Data.List                          (findIndex)
+import           Data.Maybe                         ()
 import           Control.Monad.Trans.State
 import           Control.Monad.Trans.Class          (lift)
--- import           Control.Monad.IO.Class
+import           Control.Monad.IO.Class
 import           Control.Lens
 import           Control.Monad                      (when, zipWithM_)
 
@@ -166,7 +168,22 @@ localScope f = do
     localVars  .= view localVars  s
     return r
 
+-- | we can safely match vs Just because the typechecker already approved of this member
+--   adding 1 because the memberindex starts from 1 (this pointer is 0)
+--
+getClassMemberIndex :: Identifier -> CM IO Int32 
+getClassMemberIndex id = do
+    (Just lid) <- view localObjectType <$> get
+    sym <- view symbols         <$> get
+    let (Just cls) = ST.lookupClassSymbols lid sym
+    let member = view ST.varSymbols cls
+    let (Just ix) = findIndex (\(Variable _ vname) -> vname == id) member
+    return (fromIntegral ix + 1)
+
 -- | boilerplate
+
+io :: MonadIO m => IO a -> m a
+io = liftIO
 
 curClass :: Lens' CmmScope (Maybe Class)
 curClass = lens _curClass (\x y -> x { _curClass = y })

@@ -6,7 +6,6 @@ import qualified Data.Bool                  as B
 import           Data.Int
 import           Control.Monad.Trans.State
 import           Control.Monad.Trans.Class          (lift)
-import           Control.Monad.IO.Class
 import           Control.Lens
 import           Control.Monad                      (when, zipWithM_)
 
@@ -17,9 +16,6 @@ import           Cmm.LabelGenerator                 ( Temp, Label, mkLabel, mkNa
 import           Cmm.CAST
 import qualified SymbolTable                as ST
 import           Cmm.CmmParserCore
-
-io :: MonadIO m => IO a -> m a
-io = liftIO
 
 ast2cmms :: MiniJava -> IO String
 ast2cmms ast = cmm2str <$> ast2cmm ast
@@ -281,6 +277,11 @@ expParserC (Return exp) = do
 expParserC (MemberGet exp "length") = do
     ce <- expParserC exp
     return (MEM ce)
+
+expParserC (MemberGet exp id) = do
+    ce <- expParserC exp
+    mix <- (4*) <$> getClassMemberIndex id   -- 32 bit system
+    return (MEM $ BINOP PLUS_C ce (CONST mix)) 
 
 expParserC e@_ = do
     io $ print $ "hjc:ASTToCmmParser:expParserC - " ++ show e ++ " is not implemented yet"

@@ -4,6 +4,7 @@ module Cmm.I386Instr where
 import Cmm.LabelGenerator
 import Cmm.Backend          (MachineInstr(..), MachineFunction(..), MachinePrg(..))
 import Data.Int
+import Text.Printf
 
 data SizeDirective = 
       BYTE
@@ -98,9 +99,21 @@ data X86Instr = Unary  UnaryInstr (Maybe SizeDirective, Operand)
               | RET
               | NOP
 
+data X86Comment = X86Comment String
+
+comment :: String -> X86Comment
+comment = X86Comment
+
+emptyComment :: X86Comment
+emptyComment = comment ""
+
+instance Show X86Comment where
+    show (X86Comment c) = "# " ++ c 
+
 data X86Func = X86Func {
     x86functionName :: String
   , x86body         :: [X86Instr]
+  , x86comments     :: [X86Comment]
   } 
 
 data X86Prog = X86Prog {
@@ -113,7 +126,11 @@ instance Show X86Prog where
 
 instance Show X86Func where
     show f = x86functionName f ++ ":\n\t" ++
-             concatMap (\x -> show x ++ "\n\t") (x86body f)
+             concatMap (\x -> x ++ "\n\t") body 
+
+      where 
+        body :: [String]
+        body = zipWith (\x c -> printf "%-35s %s" (show x) (show c)) (x86body f) (x86comments f)
 
 instance Show X86Instr where
     show (Unary  u (s,o))             = show u ++ maybe "" (\x -> ' ' : show x) s  ++ ' ' : show o
