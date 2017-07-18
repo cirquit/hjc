@@ -44,7 +44,7 @@ data X86State = X86State
         _header :: String
       , _scale :: Scale
       , _sideEffects :: [X86Instr]
-      , _curStackDepth :: Int32
+      , _defaultSizeDirective :: SizeDirective
     } deriving Show
 
 -- |                 c         p       f       i        
@@ -57,7 +57,7 @@ instance CodeGen X86CodeGen X86Prog X86Func X86Instr where
                 _header = []
               , _scale = S4
               , _sideEffects = []
-              , _curStackDepth = 0
+              , _defaultSizeDirective = DWORD
             }
 
 --  allRegisters :: c -> [Temp]
@@ -75,22 +75,23 @@ cmm2x86prog cmm = X86Prog <$> mapM cmmMethod2x86Function cmm
 
 cmmMethod2x86Function :: (MonadNameGen m, MonadIO m) => CmmMethod -> X86 m X86Func 
 cmmMethod2x86Function method = do
+    let s = Nothing :: Maybe SizeDirective -- no need for this for without pointer arithmetic in fstart/fend
     functionBody <- concat <$> mapM cmmStm2x86Instr (cmmBody method)
-    let functionCore = functionStart ++ functionBody ++ functionEnd
+    let functionCore = (functionStart s) ++ functionBody ++ (functionEnd s)
     return $ X86Func (cmmMethodName method) functionCore
 
   where
 
-    functionStart :: [X86Instr]
-    functionStart = [ Unary  PUSH ebp    -- staring new callframe
-                    , Binary MOV ebp esp -- moving end of previous callframe to current start 
-                    ]
+    functionStart :: Maybe SizeDirective -> [X86Instr]
+    functionStart s = [ Unary  PUSH (s, ebp)         -- staring new callframe
+                      , Binary MOV  (s, ebp) (s,esp) -- moving end of previous callframe to current start 
+                      ]
 
-    functionEnd :: [X86Instr]
-    functionEnd = [ Binary MOV eax returnTemp -- save return value in designated register eax
-                  , Binary MOV esp ebp  -- set end of frame to start of frame
-                  , Unary  POP  ebp      -- get the previous start of frame (in ebp)
-                  , RET ]                -- jump to whatever adress ebp points to
+    functionEnd :: Maybe SizeDirective -> [X86Instr]
+    functionEnd s = [ Binary MOV (s, eax) (s, returnTemp) -- save return value in designated register eax
+                    , Binary MOV (s, esp) (s, ebp)        -- set end of frame to start of frame
+                    , Unary  POP (s, ebp)                 -- get the previous start of frame (in ebp)
+                    , RET ]                               -- jump to whatever adress ebp points to
 
     returnTemp :: Operand
     returnTemp = Reg $ cmmReturn method
@@ -114,12 +115,11 @@ cmmStm2x86Instr (CJUMP relOp ce1 ce2 l1 l2) = do
             GT_C -> jumpIfElse G  l1 l2
             LE_C -> jumpIfElse LE l1 l2
             GE_C -> jumpIfElse GE l1 l2
-            _    ->  error $ "X86Backend.cmmStm2x86Instr - relOp " ++ show relOp ++ " is not implemented yet"
+            _    -> error $ "X86Backend.cmmStm2x86Instr - relOp " ++ show relOp ++ " is not implemented yet"
 
 cmmStm2x86Instr (JUMP (NAME l) ls) = return $ [JMP l]
-cmmStm2x86Instr (CA.LABEL l) = return $ [XI.LABEL l] 
-
-cmmStm2x86Instr stm@_     = error $ "X86Backend.cmmStm2x86Instr - stm " ++ show stm ++ " is not implemented yet"
+cmmStm2x86Instr (CA.LABEL l)       = return $ [XI.LABEL l] 
+cmmStm2x86Instr stm@_              = error $ "X86Backend.cmmStm2x86Instr - stm " ++ show stm ++ " is not implemented yet"
 
 
 cmmExp2x86Instr :: (MonadNameGen m, MonadIO m) => CmmExp -> X86 m Operand
@@ -129,23 +129,30 @@ cmmExp2x86Instr (CA.CALL (NAME l) args) = do
     let argByteLength = Imm (s * genericLength args)
     mapM_ push (reverse ops)             -- push arguments in reverse order (by convention)
     call l
-    add esp argByteLength                -- remov arguments from stack
-    return eax                          -- every function call has to fill the return value in eax (by convention)
+    add esp argByteLength                -- remove arguments from stack
+    return eax                           -- every function call has to fill the return value in eax (by convention)
 
 cmmExp2x86Instr (PARAM   n) = do
     s <- getScaleAsInt32
-    let n32 = 1 + fromInteger n :: Int32
-    return . Mem $ EffectiveAddress (Just ebpT) Nothing (2*s + n32*s)  -- n starts with 0
-
-                                  --  __________   (+) addr ^
-                                  -- |__arg 3___|           |
-                                  -- |__arg 2___| 
-                                  -- |__arg 1___| 
-                                  -- |____eip___|         
-                                  -- |__old ebp_|<- ebp
-                                  --                        |
-                                  --               (-) addr v
-
+    let n32 = fromInteger n :: Int32
+    return . Mem
+           $ EffectiveAddress 
+           { base = Just ebpT
+           , indexScale = Nothing
+           , displacement = (2*s + n32*s)
+           }
+           --
+           --              |-Stack Layout-|
+           --          n    
+           --    ------|      __________   (+) addr ^
+           --    PARAM 2  -> |__arg 3___|           |
+           --    PARAM 1  -> |__arg 2___| 
+           --    PARAM 0  -> |__arg 1___| 
+           --                |____eip___|         
+           --                |__old ebp_|<- ebp
+           --                                       |
+           --                              (-) addr v
+           --       
 cmmExp2x86Instr (BINOP binOp e1 e2) = do
     op1 <- cmmExp2x86Instr e1
     push op1
@@ -215,48 +222,82 @@ ecxT = mkNamedTemp "%ecx"
 -- | Binary ops
 --
 mov :: (MonadNameGen m, MonadIO m) => Operand -> Operand -> X86 m ()
-mov op1 op2 = sideEffects %= (++ [Binary MOV op1 op2])
+mov op1 op2 = do
+    dop1 <- getDefaultOperand op1
+    dop2 <- getDefaultOperand op2
+    sideEffects %= (++ [Binary MOV dop1 dop2])
 
 lea :: (MonadNameGen m, MonadIO m) => Operand -> Operand -> X86 m ()
-lea op1 op2 = sideEffects %= (++ [Binary LEA op1 op2])
+lea op1 op2 = do
+    dop1 <- getDefaultOperand op1
+    dop2 <- getDefaultOperand op2
+    sideEffects %= (++ [Binary LEA dop1 dop2])
 
 xor :: (MonadNameGen m, MonadIO m) => Operand -> Operand -> X86 m ()
-xor op1 op2 = sideEffects %= (++ [Binary XOR op1 op2])
+xor op1 op2 = do
+    dop1 <- getDefaultOperand op1
+    dop2 <- getDefaultOperand op2
+    sideEffects %= (++ [Binary XOR dop1 dop2])
 
 and :: (MonadNameGen m, MonadIO m) => Operand -> Operand -> X86 m ()
-and op1 op2 = sideEffects %= (++ [Binary AND op1 op2])
+and op1 op2 = do
+    dop1 <- getDefaultOperand op1
+    dop2 <- getDefaultOperand op2
+    sideEffects %= (++ [Binary AND dop1 dop2])
 
 or :: (MonadNameGen m, MonadIO m) => Operand -> Operand -> X86 m ()
-or op1 op2 = sideEffects %= (++ [Binary OR op1 op2])
+or op1 op2 = do
+    dop1 <- getDefaultOperand op1
+    dop2 <- getDefaultOperand op2
+    sideEffects %= (++ [Binary OR dop1 dop2])
 
 add :: (MonadNameGen m, MonadIO m) => Operand -> Operand -> X86 m ()
-add op1 op2 = sideEffects %= (++ [Binary ADD op1 op2])
+add op1 op2 =  do
+    dop1 <- getDefaultOperand op1
+    dop2 <- getDefaultOperand op2
+    sideEffects %= (++ [Binary ADD dop1 dop2])
 
 sub :: (MonadNameGen m, MonadIO m) => Operand -> Operand -> X86 m ()
-sub op1 op2 = sideEffects %= (++ [Binary SUB op1 op2])
+sub op1 op2 = do
+    dop1 <- getDefaultOperand op1
+    dop2 <- getDefaultOperand op2
+    sideEffects %= (++ [Binary SUB dop1 dop2])
 
 imul :: (MonadNameGen m, MonadIO m) => Operand -> Operand -> X86 m ()
-imul op1 op2 = sideEffects %= (++ [Binary IMUL op1 op2])
+imul op1 op2 = do
+    dop1 <- getDefaultOperand op1
+    dop2 <- getDefaultOperand op2
+    sideEffects %= (++ [Binary IMUL dop1 dop2])
 
 cmp :: (MonadNameGen m, MonadIO m) => Operand -> Operand -> X86 m ()
-cmp op1 op2 = sideEffects %= (++ [Binary CMP op1 op2])
+cmp op1 op2 = do
+    dop1 <- getDefaultOperand op1
+    dop2 <- getDefaultOperand op2
+    sideEffects %= (++ [Binary CMP dop1 dop2])
 
 
 -- | Unary ops
 --
 idiv :: (MonadNameGen m, MonadIO m) => Operand -> X86 m ()
-idiv op = sideEffects %= (++ [Unary IDIV op])
+idiv op = do
+    dop <- getDefaultOperand op
+    sideEffects %= (++ [Unary IDIV dop])
 
 push :: (MonadNameGen m, MonadIO m) => Operand -> X86 m ()
-push op = sideEffects %= (++ [Unary PUSH op])
+push op =  do
+    dop <- getDefaultOperand op
+    sideEffects %= (++ [Unary PUSH dop])
 
 pop :: (MonadNameGen m, MonadIO m) => Operand -> X86 m ()
-pop op = sideEffects %= (++ [Unary POP op])
+pop op =  do
+    dop <- getDefaultOperand op
+    sideEffects %= (++ [Unary POP dop])
 
 call :: (MonadNameGen m, MonadIO m) => Label -> X86 m ()
 call l = sideEffects %= (++ [XI.CALL l])
 
 -- | Others
+--
 cdq :: (MonadNameGen m, MonadIO m) => X86 m ()
 cdq = sideEffects %= (++ [CDQ])
 
@@ -268,6 +309,16 @@ jumpCnd cnd l = sideEffects %= (++ [J cnd l])
 
 jump :: (MonadNameGen m, MonadIO m) => Label -> X86 m ()
 jump l = sideEffects %= (++ [JMP l])
+
+-- | size directives are only for registers
+--
+getDefaultOperand :: Monad m => Operand -> X86 m (Maybe SizeDirective, Operand)
+getDefaultOperand op = do
+    case op of
+        (Imm _) -> return (Nothing, op)
+        (Reg _) -> return (Nothing, op)
+        _       -> Just . view defaultSizeDirective <$> get >>= \sd -> return (sd, op)
+
 
 -- | Utils
 --
@@ -292,6 +343,5 @@ scale = lens _scale (\x y -> x { _scale = y })
 sideEffects   :: Lens' X86State [X86Instr]
 sideEffects = lens _sideEffects (\x y -> x { _sideEffects = y })
 
-curStackDepth :: Lens' X86State Int32
-curStackDepth = lens _curStackDepth (\x y -> x { _curStackDepth = y })
-
+defaultSizeDirective   :: Lens' X86State SizeDirective
+defaultSizeDirective = lens _defaultSizeDirective (\x y -> x { _defaultSizeDirective = y })

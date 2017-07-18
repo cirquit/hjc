@@ -21,6 +21,7 @@ library
                      , ParserRecords
                      , ParserLens
                      , Output
+                     , TimeMonad
                      , SymbolTable
                      , TypeCheck.TypeCheck
                      , TypeCheck.TCCore

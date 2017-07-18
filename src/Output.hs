@@ -5,7 +5,6 @@ import           Text.Megaparsec.Pos                (Pos())
 import           Rainbow
 
 import           Prelude                     hiding (head)
-import           System.CPUTime
 import           System.FilePath.Posix              ((</>))
 import           Data.Set                           (toAscList)
 import           Data.List.NonEmpty                 (head)
@@ -135,16 +134,6 @@ showTime oi config = do
 
 showTimeFin :: Double -> IO ()
 showTimeFin t = putChunk $ (chunk " Finished in: ") <> (chunk $ show t) <> (chunk "ms\n") & italic
-
--- |Wrap an 'IO' computation so that it returns execution time is seconds as well as the real value.
-timeItT :: IO a -> IO (Double, a)
-timeItT ioa = do
-    t1 <- getCPUTime
-    a <- ioa
-    t2 <- getCPUTime
-    let t :: Double
-        t = fromIntegral (t2-t1) * 1e-8
-    return (t, a)
 
 writeJavaOutput :: OutputInfo -> Config -> IO ()
 writeJavaOutput (OutputInfo inputName _ _ (Just ast) _ _) conf = do

@@ -5,13 +5,26 @@ import Cmm.LabelGenerator
 import Cmm.Backend          (MachineInstr(..), MachineFunction(..), MachinePrg(..))
 import Data.Int
 
-data UnaryInstr = PUSH
-                | POP
-                | NEG
-                | NOT
-                | INC
-                | DEC
-                | IDIV
+data SizeDirective = 
+      BYTE
+    | WORD
+    | DWORD
+    | QWORD -- 64 bit won't be supported
+
+instance Show SizeDirective where
+    show BYTE  = "BYTE"
+    show WORD  = "WORD"
+    show DWORD = "DWORD PTR"
+    show QWORD = "QWORD PTR"
+
+data UnaryInstr =
+      PUSH
+    | POP  
+    | NEG
+    | NOT
+    | INC
+    | DEC
+    | IDIV
 
 instance Show UnaryInstr where
   show PUSH = "push"
@@ -22,20 +35,21 @@ instance Show UnaryInstr where
   show DEC  = "dec"
   show IDIV = "idiv"
 
-data BinayInstr = MOV
-                | ADD
-                | SUB
-                | SHL
-                | SHR
-                | SAL
-                | SAR
-                | AND
-                | OR
-                | XOR
-                | TEST
-                | CMP
-                | LEA
-                | IMUL
+data BinayInstr =
+      MOV 
+    | ADD
+    | SUB 
+    | SHL
+    | SHR
+    | SAL
+    | SAR
+    | AND
+    | OR
+    | XOR
+    | TEST
+    | CMP
+    | LEA
+    | IMUL
 
 instance Show BinayInstr where
     show MOV  = "mov"
@@ -73,8 +87,9 @@ data Operand = Imm Int32
              | Reg Temp
              | Mem EffectiveAddress
 
-data X86Instr = Unary UnaryInstr Operand
-              | Binary BinayInstr Operand Operand
+data X86Instr = Unary  UnaryInstr (Maybe SizeDirective, Operand)
+              | Binary BinayInstr (Maybe SizeDirective, Operand)
+                                  (Maybe SizeDirective, Operand)
               | LABEL Label
               | CDQ
               | JMP Label
@@ -94,15 +109,16 @@ data X86Prog = X86Prog {
 
 instance Show X86Prog where
     show p = concat ["\t.intel_syntax noprefix\n\t", ".global Lmain\n"]
-          ++ concatMap (\x -> show x ++ "\n\t") (x86functions p)
+          ++ concatMap (\x -> show x ++ "\n") (x86functions p)
 
 instance Show X86Func where
     show f = x86functionName f ++ ":\n\t" ++
              concatMap (\x -> show x ++ "\n\t") (x86body f)
 
 instance Show X86Instr where
-    show (Unary u o)      = show u ++ ' ' : show o
-    show (Binary b o1 o2) = show b ++ ' ' : show o1 ++ ", " ++ show o2
+    show (Unary  u (s,o))             = show u ++ maybe "" (\x -> ' ' : show x) s  ++ ' ' : show o
+    show (Binary b (s1, o1) (s2, o2)) = show b ++ maybe "" (\x -> ' ' : show x) s1 ++ ' ' : show o1
+                                        ++ ", "++ maybe "" (\x -> ' ' : show x) s2 ++ ' ' : show o2
     show (LABEL l)        = l ++ ":"
     show RET              = "ret"
     show CDQ              = "cdq"
