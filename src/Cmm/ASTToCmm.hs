@@ -1,4 +1,4 @@
-module Cmm.ASTToCmmParser where
+module Cmm.ASTToCmm where
 
 import qualified Data.Map                   as Map
 import qualified Data.List                  as DL
@@ -15,7 +15,7 @@ import           Cmm.LabelGenerator                 ( Temp, Label, mkLabel, mkNa
                                                     )
 import           Cmm.CAST
 import qualified SymbolTable                as ST
-import           Cmm.CmmParserCore
+import           Cmm.Core
 
 ast2cmms :: MiniJava -> IO String
 ast2cmms ast = cmm2str <$> ast2cmm ast

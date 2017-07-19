@@ -29,12 +29,13 @@ library
                      , Config
                      , Cmm.LabelGenerator
                      , Cmm.CAST
-                     , Cmm.ASTToCmmParser
-                     , Cmm.CmmParserCore
+                     , Cmm.ASTToCmm
+                     , Cmm.Core
                      , Cmm.Canon
                      , Cmm.I386Instr
                      , Cmm.Backend
-                     , Cmm.X86Backend.X86Backend
+                     , Cmm.X86.Backend
+                     , Cmm.X86.Core
   build-depends:       base         >= 4.7     && < 5
                      , megaparsec   >= 5.2.0   && < 6
                      , containers   >= 0.5.7.1 && < 6

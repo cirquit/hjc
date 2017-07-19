@@ -105,6 +105,17 @@ instance Show CmmBinOp where
    show ARSHIFT_C = "ARSHIFT"
    show XOR_C     = "XOR"
 
+litShow :: CmmBinOp -> String
+litShow PLUS_C    = "+"
+litShow MINUS_C   = "-"
+litShow MUL_C     = "*"
+litShow DIV_C     = "/"
+litShow AND_C     = "&&"
+litShow OR_C      = "||"
+litShow LSHIFT_C  = "<<"
+litShow RSHIFT_C  = ">>"
+litShow ARSHIFT_C = "ARSHIFT"
+litShow XOR_C     = "^"
 
 instance Show CmmRelOp where
    show EQ_C = "EQ"

@@ -15,13 +15,13 @@ import           Control.Monad                      (when)
 import           AST
 import           Config
 import           TypeCheck.TCCore                    (TypeScope(), TypeError(..), successful, errors)
-import           Cmm.ASTToCmmParser                  (ast2cmms, ast2cmm)
+import           Cmm.ASTToCmm                        (ast2cmms, ast2cmm)
 import           Cmm.Canon                           (cmm2canons, cmm2canon)
-import           Cmm.X86Backend.X86Backend
 import           Cmm.Backend
-import           Cmm.I386Instr                    
+import           Cmm.I386Instr
 import           Cmm.LabelGenerator
 
+import           Cmm.X86.Backend
 
 
 data OutputInfo = OutputInfo {

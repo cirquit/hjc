@@ -10,7 +10,7 @@ data SizeDirective =
       BYTE
     | WORD
     | DWORD
-    | QWORD -- 64 bit won't be supported
+    | QWORD -- 64 bit won't be supported for the time being
 
 instance Show SizeDirective where
     show BYTE  = "BYTE"
@@ -68,7 +68,16 @@ instance Show BinayInstr where
     show IMUL = "imul"
 
 data Cond = E | NE | L | LE | G | GE | Z
-  deriving Show
+
+-- used with 'j' prefix
+instance Show Cond where
+    show E  = "e" 
+    show NE = "ne"
+    show L  = "l" 
+    show LE = "le"
+    show G  = "g" 
+    show GE = "ge"
+    show Z  = "z"
 
 data Scale = S2 | S4 | S8 -- possible scaling values for effective addressing
   deriving Show
@@ -127,8 +136,8 @@ instance Show X86Prog where
 instance Show X86Func where
     show f = x86functionName f ++ ":\n\t" ++
              concatMap (\x -> x ++ "\n\t") body 
-
       where 
+
         body :: [String]
         body = zipWith (\x c -> printf "%-35s %s" (show x) (show c)) (x86body f) (x86comments f)
 
@@ -140,7 +149,7 @@ instance Show X86Instr where
     show RET              = "ret"
     show CDQ              = "cdq"
     show (JMP l)          = "jmp " ++ l
-    show (J cond l)       = "j " ++ show cond ++ " " ++ l
+    show (J cond l)       = "j" ++ show cond ++ " " ++ l
     show (CALL l)         = "call " ++ l
     show NOP              = ""
 
@@ -161,7 +170,6 @@ instance Show EffectiveAddress where
 
 -- | bypassing non exisiting module system of haskell
 data X86CodeGen = X86CodeGen
-
 
 -- | Instance definition for X86 Backend
 

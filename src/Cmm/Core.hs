@@ -1,4 +1,4 @@
-module Cmm.CmmParserCore where
+module Cmm.Core where
 
 import qualified Data.Map                   as Map
 import           Data.Int

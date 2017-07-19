@@ -20,6 +20,7 @@ import           Control.Monad               (mapM_, filterM)
 import           System.Directory            (listDirectory, createDirectoryIfMissing, doesFileExist)
 import           System.FilePath.Posix       ((</>))
 import           System.Environment
+import           Prelude                hiding  (error)
 
 mainConfig :: Config
 mainConfig = defaultConfig  {

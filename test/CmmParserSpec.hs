@@ -96,9 +96,11 @@ testConfig = Config
     , showResult'   = False
     , showTime'     = True
     , compileToCmm  = True
+    , compileToX86  = False
     , canonizeCmm   = False
     , javaOutputDir = "output"
     , cmmOutputDir  = "cmm-output"
+    , x86OutputDir  = "x86-output"
     , typeErrLvl   = AllErrors -- FirstError -- Silently 
     }
 
