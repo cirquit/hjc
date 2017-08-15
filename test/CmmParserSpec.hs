@@ -81,7 +81,7 @@ spec = do
 
 makeC :: String -> IO ExitCode
 makeC inputFile = do
-    (_, Just hout, _, ph) <- createProcess (proc "make" ["file=" ++ inputFile ++ ".tree"]){ cwd = Just "cmm-output", std_out = CreatePipe }
+    (_, Just hout, _, ph) <- createProcess (proc "make" ["file=" ++ inputFile ++ "-canonized.tree"]){ cwd = Just "cmm-output", std_out = CreatePipe }
     eC <- waitForProcess ph
     (_, _, _, cleanH) <- createProcess (proc "make" ["clean"]){ cwd = Just "cmm-output", std_out = CreatePipe }
     _ <- waitForProcess cleanH
@@ -97,7 +97,7 @@ testConfig = Config
     , showTime'     = True
     , compileToCmm  = True
     , compileToX86  = False
-    , canonizeCmm   = False
+    , canonizeCmm   = True 
     , javaOutputDir = "output"
     , cmmOutputDir  = "cmm-output"
     , x86OutputDir  = "x86-output"

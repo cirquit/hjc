@@ -34,6 +34,7 @@ data CmmScope = CmmScope
     , _curRetTemp       :: CmmExp
     , _localTemps       :: Map.Map Identifier CmmExp  -- (CmmExp == TEMP, PARAM(i), MEM(PARAM + n*4))
     , _localVars        :: Map.Map Identifier Type    -- variable type mapping for naming of methods, not happy with two maps
+    , _assignment       :: Bool                       -- if an assignment is parsed, don't construct any var by default
     }
 
 
@@ -160,6 +161,14 @@ withLocalObject id f = do
     localObjectType .= Nothing
     return e
 
+withAssigment :: CM IO CmmExp -> CM IO CmmExp
+withAssigment f = do
+    oldAssigment <- view assignment <$> get
+    assignment .= True
+    e <- f
+    assignment .= oldAssigment
+    return e
+
 localScope :: CM IO a -> CM IO a
 localScope f = do
     s <- get
@@ -208,3 +217,6 @@ curRetTemp = lens _curRetTemp (\x y -> x { _curRetTemp = y })
 
 localVars   :: Lens' CmmScope (Map.Map Identifier Type)
 localVars = lens _localVars (\x y -> x { _localVars = y })
+
+assignment  :: Lens' CmmScope Bool
+assignment = lens _assignment (\x y -> x { _assignment = y })

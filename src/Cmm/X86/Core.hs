@@ -96,6 +96,12 @@ withSizeDirective s f = do
     f
     defaultSizeDirective .= oldSizeDirective
 
+
+isNonRegister :: Operand -> Bool
+isNonRegister (Reg _) = False
+isNonRegister _       = True
+
+
 -- | Simple DSL for x86 asm
 -- |
 -- | Binary ops
@@ -287,6 +293,13 @@ ecx = Reg ecxT
 ecxT :: Temp
 ecxT = mkNamedTemp "%ecx"
 
+-- used to move the first argument to edx if not already a register
+edx :: Operand
+edx = Reg edxT
+
+edxT :: Temp
+edxT = mkNamedTemp "%edx"
+
 
 -- | comment shorthand
 --
@@ -304,3 +317,8 @@ replaceLast :: a -> [a] -> [a]
 replaceLast y []     = [y]
 replaceLast y [x]    = [y] 
 replaceLast y (x:xs) = x : replaceLast y xs
+
+
+-- | label generator
+nextTempO :: (MonadNameGen m) => X86 m Operand
+nextTempO = Reg <$> nextTemp'

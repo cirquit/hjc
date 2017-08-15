@@ -25,11 +25,14 @@ import           Cmm.LabelGenerator                 ( Temp, Label, mkLabel, mkNa
 import           Cmm.Backend
 import           Cmm.I386Instr              as XI
 import           Cmm.X86.Core
+import           Cmm.ASTToCmm                       (ast2ccmmGen)
+import           AST                                (MiniJava())
+
 
 -- | Main function
 --
-generatex86 :: Cmm -> IO X86Prog
-generatex86 cmm = runNameGenT $ codeGen X86CodeGen cmm
+generatex86 :: MiniJava -> IO X86Prog
+generatex86 ast = runNameGenT $ ast2ccmmGen ast >>= \cmm -> codeGen X86CodeGen cmm
 
 cmm2x86prog :: (MonadNameGen m, MonadIO m) => Cmm -> X86 m X86Prog
 cmm2x86prog cmm = X86Prog <$> mapM cmmMethod2x86 cmm
@@ -81,7 +84,12 @@ cmmStm2x86 (MOVE ce1 ce2) = returnWithSideEffects $ do
 cmmStm2x86 (CJUMP relOp ce1 ce2 l1 l2) = returnWithSideEffects $ do
     op1 <- cmmExp2x86 ce1
     op2 <- cmmExp2x86 ce2
-    cmp op1 op2 # "comparing for " ++ show relOp
+    if (isNonRegister op1) then do -- remove this after optimization on const values
+        compareTemp <- nextTempO
+        mov compareTemp op1 # "moving to fresh temp because first argument is not a register"
+        cmp compareTemp op2 # "comparing for " ++ show relOp
+    else 
+        cmp op1 op2 # "comparing for " ++ show relOp
     case relOp of
         EQ_C -> jumpIfElse E  l1 l2 # "jumps for (=)"
         NE_C -> jumpIfElse NE l1 l2 # "jumps for (!=)"
@@ -120,7 +128,10 @@ callx86 (CA.CALL (NAME l) args) = do
     mapM_ (\(o, i) -> push o  # "pushing " ++ show i ++ " argument") (argList ops)
     call l                    # "result of function call " ++ l ++ " is in eax by convention"
     add  esp (argStackSize s) # "remove arguments from stack"
-    return eax
+
+    returnOp <- nextTempO
+    mov returnOp eax          # "save result from function call in fresh temp"
+    return returnOp
 
   where
 
@@ -148,43 +159,49 @@ paramx86 :: (MonadNameGen m, MonadIO m) => CmmExp -> X86 m Operand
 paramx86 (PARAM n) = do
     s <- getScaleAsInt32
     let n32 = fromInteger n :: Int32
-    return . Mem
-           $ EffectiveAddress 
-           { base         = Just ebpT
-           , indexScale   = Nothing
-           , displacement = (2*s + n32*s)
-           }
+        op  =  Mem
+             $ EffectiveAddress 
+             { base         = Just ebpT
+             , indexScale   = Nothing
+             , displacement = (2*s + n32*s)
+             }
+    t <- nextTempO
+    lea t op # "move memory address to a fresh temp"
+    return t
 
 -- | using ecx as first argument holder, and eax as second argument
 --
 binopx86 :: (MonadNameGen m, MonadIO m) => CmmExp -> X86 m Operand
 binopx86 (BINOP binOp e1 e2) = do
-    nop # "binop " ++ litShow binOp
+    nop           # "binop (" ++ litShow binOp ++ ")"
     op1 <- cmmExp2x86 e1
-    push op1      # "saving first "  ++ show binOp ++ " result"
-
     op2 <- cmmExp2x86 e2
-    pop ecx       # "getting first " ++ show binOp ++ " result"
-    mov eax op2   # "saving second " ++ show binOp ++ " result"
+
+    op1 <- if (isNonRegister op1) then do -- remove this after optimization on const values
+                firstArgTemp <- nextTempO
+                mov firstArgTemp op1 # "moving to fresh temp because first argument is not a register"
+                return firstArgTemp
+            else 
+                return op1
 
     case binOp of
-        PLUS_C  -> add  ecx eax
-        MINUS_C -> sub  ecx eax
-        MUL_C   -> imul ecx eax
-        AND_C   -> and  ecx eax 
-        OR_C    -> or   ecx eax 
-        XOR_C   -> xor  ecx eax 
+        PLUS_C  -> add  op1 op2
+        MINUS_C -> sub  op1 op2
+        MUL_C   -> imul op1 op2
+        AND_C   -> and  op1 op2 
+        OR_C    -> or   op1 op2 
+        XOR_C   -> xor  op1 op2 
         DIV_C   -> do 
-            xor ecx eax  # "switch values, idiv saves the result in eax"
-            xor eax ecx
-            xor ecx eax
+            mov eax op1  # "moving first arg to eax for idiv"
             cdq
-            idiv ecx
-            mov ecx eax
+            idiv op2
+            mov op1 eax  # "move idiv result to initial destination"
         _       -> error $ "X86Backend.cmmExp2x86 - binOp " ++ show binOp ++ " is not implemented yet"
 
-    mov eax ecx
-    return eax
+    
+    t <- nextTempO
+    mov t op1   # "move binop (" ++ litShow binOp ++ ") result to fresh variable"
+    return t
 
 -- | This dereferences the pointer
 --   It should be a valid temporary - we currently don't allow pointer -> pointer (may be a problem with arrays)
@@ -192,12 +209,17 @@ memx86 :: (MonadNameGen m, MonadIO m) => CmmExp -> X86 m Operand
 memx86 (MEM exp) = do
     op <- cmmExp2x86 exp
     case op of
-        (Reg t) -> return . Mem
-                          $ EffectiveAddress {
-                              base         = Just t
-                            , indexScale   = Nothing
-                            , displacement = 0
-                            }
+        (Reg t) -> do
+            let op = Mem
+                   $ EffectiveAddress {
+                       base         = Just t
+                     , indexScale   = Nothing
+                     , displacement = 0
+                     }
+            t <- nextTempO
+            mov t op # "memx86"
+            return t
+        -- (Mem ea) -> return $ Mem ea
         _       -> error $ "X86Backend.cmmExp2x86 - MEM had to dereference an invalid operand: " ++ show op
 
 

@@ -20,4 +20,5 @@ cabal.project.local
 *.*~
 *kdev4*
 output
-
+*.s
+*.tree

@@ -80,8 +80,8 @@ makeC :: String -> IO ExitCode
 makeC inputFile = do
     (_, Just hout, _, ph) <- createProcess (proc "risc386" [inputFile ++ ".s", ">", "/dev/null", "2>&1"]){ cwd = Just "x86-output", std_out = CreatePipe }
     eC <- waitForProcess ph
-    (_, _, _, cleanH) <- createProcess (proc "rm" ["*.s"]){ cwd = Just "x86-output", std_out = CreatePipe }
-    _ <- waitForProcess cleanH
+    -- (_, _, _, cleanH) <- createProcess (proc "rm" ["*.s"]){ cwd = Just "x86-output", std_out = CreatePipe }
+    -- _ <- waitForProcess cleanH
     return eC
 
 

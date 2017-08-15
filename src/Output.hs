@@ -15,13 +15,12 @@ import           Control.Monad                      (when)
 import           AST
 import           Config
 import           TypeCheck.TCCore                    (TypeScope(), TypeError(..), successful, errors)
-import           Cmm.ASTToCmm                        (ast2cmms, ast2cmm)
-import           Cmm.Canon                           (cmm2canons, cmm2canon)
+import           Cmm.ASTToCmm                        (ast2cmms, ast2cmm, ast2ccmm, ast2ccmms)
 import           Cmm.Backend
 import           Cmm.I386Instr
 import           Cmm.LabelGenerator
 
-import           Cmm.X86.Backend
+import           Cmm.X86.Backend                     (generatex86)
 
 
 data OutputInfo = OutputInfo {
@@ -152,7 +151,7 @@ writeCmmOutput (OutputInfo inputName _ _ (Just ast) _ _) conf = when (compileToC
         case (canonizeCmm conf) of
             True ->  do 
                 let outputName = (cmmOutputDir conf) </> (name ++ "-canonized.tree")
-                result <- cmm2canons =<< ast2cmm ast 
+                result <- ast2ccmms ast 
                 return (outputName, result)
             False -> do
                 let outputName = (cmmOutputDir conf) </> (name ++ ".tree")
@@ -163,13 +162,11 @@ writeCmmOutput (OutputInfo inputName _ _ (Just ast) _ _) conf = when (compileToC
     putChunk $ (chunk "Written: ") & fore green
     putChunk $ (chunk outputName) <> (chunk "\n") & bold
 
-
 writeX86Output :: OutputInfo -> Config -> IO ()
 writeX86Output (OutputInfo inputName _ _ (Just ast) _ _) conf = when (compileToX86 conf) $ do
     let _ : name : _ = reverse <$> (LS.splitOneOf "./" $ reverse inputName)
         outputName = (x86OutputDir conf) </> (name ++ ".s")
-    cmmResult <- cmm2canon =<< ast2cmm ast 
-    result    <- runNameGenT $ codeGen X86CodeGen cmmResult 
+    result <- generatex86 ast 
     writeFile outputName (show result)
     putChunk $ (chunk ">> ")
     putChunk $ (chunk "Written: ") & fore green

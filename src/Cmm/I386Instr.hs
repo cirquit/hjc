@@ -165,7 +165,10 @@ instance Show EffectiveAddress where
         case (base ea, indexScale ea) of
             (Just bt, Just (t, s)) -> "[" ++ show bt ++ " + " ++ show t ++ "*" ++ show s ++ " + " ++ c ++ "]"
             (_,       Just (t, s)) -> "[" ++                     show t ++ "*" ++ show s ++ " + " ++ c ++ "]"
-            (Just bt, _)           -> "[" ++ show bt                                     ++ " + " ++ c ++ "]"
+            (Just bt, _)           ->
+                case displacement ea of
+                     0 -> "[" ++ show bt ++ "]"
+                     _ -> "[" ++ show bt                                     ++ " + " ++ c ++ "]"
             (_, _)                 -> "[" ++                                                         c ++ "]"
 
 -- | bypassing non exisiting module system of haskell

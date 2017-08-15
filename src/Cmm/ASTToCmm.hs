@@ -8,6 +8,7 @@ import           Control.Monad.Trans.State
 import           Control.Monad.Trans.Class          (lift)
 import           Control.Lens
 import           Control.Monad                      (when, zipWithM_)
+import           Control.Monad.IO.Class
 
 import           AST
 import           Cmm.LabelGenerator                 ( Temp, Label, mkLabel, mkNamedTemp, MonadNameGen(..)
@@ -16,14 +17,28 @@ import           Cmm.LabelGenerator                 ( Temp, Label, mkLabel, mkNa
 import           Cmm.CAST
 import qualified SymbolTable                as ST
 import           Cmm.Core
+import           Cmm.Canon                          
 
 ast2cmms :: MiniJava -> IO String
 ast2cmms ast = cmm2str <$> ast2cmm ast
 
+ast2ccmms :: MiniJava -> IO String
+ast2ccmms ast = cmm2str <$> ast2ccmm ast
+
+ast2cmm :: MiniJava -> IO Cmm
+ast2cmm ast = runNameGenT (ast2cmmGen ast)
+
+ast2ccmm :: MiniJava -> IO Cmm
+ast2ccmm ast = runNameGenT (ast2ccmmGen ast)
+
+-- canonized version
+ast2ccmmGen :: MiniJava -> NameGenT IO Cmm
+ast2ccmmGen ast = ast2cmmGen ast >>= canPrg
+
 -- | main intro function
 --
-ast2cmm :: MiniJava -> IO Cmm
-ast2cmm ast = (view cmm . snd) <$> runNameGenT (runStateT (parseMiniJavaCmm ast) cmmScope)
+ast2cmmGen :: MiniJava -> NameGenT IO Cmm
+ast2cmmGen ast = (view cmm . snd) <$> runStateT (parseMiniJavaCmm ast) cmmScope
     where
         -- | running state
         --
@@ -37,6 +52,7 @@ ast2cmm ast = (view cmm . snd) <$> runNameGenT (runStateT (parseMiniJavaCmm ast)
             , _curRetTemp      = TEMP $ mkNamedTemp "t1234567890" -- the debugger assumes this notation
             , _localTemps      = Map.empty
             , _localVars       = Map.empty
+            , _assignment      = False
             }
 
         -- | computing this twice, here and in TypeCheck.hs, this should be cached
@@ -212,14 +228,18 @@ expParserC This = do
 -- local definiton of a variable is saved to the local temps
 expParserC (LitVar v) = do
     vars <- view localTemps <$> get
+    assign <- view assignment <$> get
     case Map.lookup (_variableName v) vars of
         (Just tempExp) -> do
             return tempExp
         Nothing        -> do
             tempExp <- nextTempE
             localTemps %= Map.insert (_variableName v) tempExp
-            localVars  %= Map.insert (_variableName v) (_type v) 
-            return tempExp
+            localVars  %= Map.insert (_variableName v) (_type v)
+            if (assign) then
+                return tempExp
+            else 
+                return $ ESEQ (defaultIntInit tempExp) tempExp
 
 -- identifier has to reference a temporary (locally defined variables or method arguments)
 expParserC (LitIdent id) = do
@@ -230,8 +250,8 @@ expParserC (LitIdent id) = do
         Nothing        -> error $ "hjc:ASTToCmmParser:expParserC - Temporary with id \"" ++ id ++ "\" could not be found"
 
 expParserC (Assign lhs rhs) = do
-    lhsE <- expParserC lhs 
-    stm <- MOVE <$> expParserC lhs <*> expParserC rhs -- assumption has to hold that any return of lhs should return a temporary (or a param)
+    lhsE <- withAssigment $ expParserC lhs 
+    stm <- MOVE <$> withAssigment (expParserC lhs) <*> expParserC rhs -- assumption has to hold that any return of lhs should return a temporary (or a param)
     return $ ESEQ (SEQ [stm]) lhsE
 
 expParserC (BinOp e1 op e2) = do
@@ -311,6 +331,9 @@ withName name m = m { cmmMethodName = name }
 
 withArgLen :: Int -> CmmMethod -> CmmMethod
 withArgLen l m = m { cmmArgLength = l } 
+
+defaultIntInit :: CmmExp -> CmmStm
+defaultIntInit t = MOVE t (CONST 0)
 
 -- | monadic utils
 --

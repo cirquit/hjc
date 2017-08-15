@@ -25,7 +25,7 @@ import           Prelude                hiding  (error)
 mainConfig :: Config
 mainConfig = defaultConfig  {
       parse'        = True
-    , showAst'      = False 
+    , showAst'      = True 
     , showResult'   = False
     , showTime'     = True
     , compileToCmm  = True

@@ -2,8 +2,8 @@
  - Canonization of intermediate code
  -}
 module Cmm.Canon(
-  cmm2canon,
-  cmm2canons,
+--  cmm2canon,
+--  cmm2canons,
   canPrg,
   canMethod
   ) where
@@ -11,11 +11,11 @@ module Cmm.Canon(
 import Cmm.LabelGenerator
 import Cmm.CAST
 
-cmm2canon :: Cmm -> IO Cmm
-cmm2canon cmm = runNameGenT $ canPrg cmm
+-- cmm2canon :: Cmm -> IO Cmm
+-- cmm2canon cmm = runNameGenT $ canPrg cmm
 
-cmm2canons :: Cmm -> IO String
-cmm2canons cmm = cmm2str <$> cmm2canon cmm
+-- cmm2canons :: Cmm -> IO String
+-- cmm2canons cmm = cmm2str <$> cmm2canon cmm
 
 -- | Type for canonized statments
 -- This is just a type of lists (in reverse order). We do not use standard

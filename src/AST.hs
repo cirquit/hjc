@@ -25,7 +25,15 @@ data Class = Class
     , _extends :: Identifier
     , _variables :: [Variable]
     , _methods :: [Method]
-    } deriving (Show, Eq)
+    } deriving (Eq)
+
+instance Show Class where
+    show (Class className extends variables methods) =
+        "class " ++ className ++ " extends " ++ extends ++ "{\n"
+        ++ concatMap (\x -> "\t" ++ show x ++ ";\n") variables
+        ++ concatMap (\x -> "\t" ++ show x ++ "\n") methods
+        ++ "}\n"
+
 
 instance ShowJava Class where
     showJC (Class className extends variables methods) =
@@ -40,7 +48,16 @@ data Method = Method
     , _methodRetType :: Type
     , _methodArguments :: [Variable]
     , _methodBody :: [Statement]
-    } deriving (Show, Eq)
+    } deriving (Eq)
+
+
+
+instance Show Method where
+    show (Method methodName methodRetType methodArguments methodBody) =
+        show methodRetType ++ ' ' : methodName
+        ++ "( " ++ concat (intersperse "," (map show methodArguments)) ++ ") {\n"
+        ++ concatMap (\x -> "\t\t" ++ show x ++ "\n") methodBody
+        ++ "\t}"
 
 instance ShowJava Method where
     showJC (Method methodName methodRetType methodArguments methodBody) =
