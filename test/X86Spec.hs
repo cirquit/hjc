@@ -56,17 +56,18 @@ spec = do
                 pathToTestFile      = "test/examples/MiniJava_Examples/Large/"
                 successfulFileNames = [
                       "BinarySearch"
-                    -- , "BinaryTree"
-                    , "BubbleSort"
+                   -- , "BinaryTree"  -- takes too long for risc386
+                    , "BubbleSort" 
                     , "Fib"
                     , "FibL"
                     , "Graph"
                     , "LinearSearch"
                     , "LinkedList"
                     , "ManyArgs"
-                   -- , "Newton"
+                   -- , "Newton"      -- takes too long for risc386
                     , "Primes"
                     , "QuickSort"
+                   -- , "GameOfLife"  -- takes too long for risc386
                     ]
 
                 testList            = zip successfulFileNames (iterate id successfulTitle)

@@ -101,6 +101,10 @@ isNonRegister :: Operand -> Bool
 isNonRegister (Reg _) = False
 isNonRegister _       = True
 
+isMemoryOperand :: Operand -> Bool
+isMemoryOperand (Mem _) = True
+isMemoryOperand _       = False
+
 
 -- | Simple DSL for x86 asm
 -- |

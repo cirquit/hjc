@@ -79,6 +79,14 @@ cmmStm2x86 :: (MonadNameGen m, MonadIO m) => CmmStm -> X86 m ([X86Instr], [X86Co
 cmmStm2x86 (MOVE ce1 ce2) = returnWithSideEffects $ do
     op1 <- cmmExp2x86 ce1
     op2 <- cmmExp2x86 ce2
+    op2 <- if (isMemoryOperand op2)
+                then do
+                    t <- nextTempO
+                    mov t op2
+                    return t
+                else do 
+                    return op2
+
     mov op1 op2
 
 cmmStm2x86 (CJUMP relOp ce1 ce2 l1 l2) = returnWithSideEffects $ do
