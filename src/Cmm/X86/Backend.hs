@@ -166,7 +166,7 @@ paramx86 (PARAM n) = do
              , displacement = (2*s + n32*s)
              }
     t <- nextTempO
-    lea t op # "move memory address to a fresh temp"
+    mov t op # "paramx86, get the value of the argument #" ++ show n
     return t
 
 -- | using ecx as first argument holder, and eax as second argument
@@ -177,12 +177,12 @@ binopx86 (BINOP binOp e1 e2) = do
     op1 <- cmmExp2x86 e1
     op2 <- cmmExp2x86 e2
 
-    op1 <- if (isNonRegister op1) then do -- remove this after optimization on const values
-                firstArgTemp <- nextTempO
-                mov firstArgTemp op1 # "moving to fresh temp because first argument is not a register"
-                return firstArgTemp
-            else 
-                return op1
+    op1 <-do  -- if (isNonRegister op1) then do -- remove this after optimization on const values
+             firstArgTemp <- nextTempO
+             mov firstArgTemp op1 # "moving to fresh temp because first argument is not a register"
+             return firstArgTemp
+         --   else 
+         --       return op1
 
     case binOp of
         PLUS_C  -> add  op1 op2
@@ -216,10 +216,17 @@ memx86 (MEM exp) = do
                      , indexScale   = Nothing
                      , displacement = 0
                      }
-            t <- nextTempO
-            mov t op # "memx86"
-            return t
-        -- (Mem ea) -> return $ Mem ea
+            return op
+        (Mem ea) -> do
+            (Reg t) <- nextTempO
+            mov (Reg t) op
+            let op = Mem
+                   $ EffectiveAddress {
+                       base         = Just t
+                     , indexScale   = Nothing
+                     , displacement = 0
+                     }
+            return op
         _       -> error $ "X86Backend.cmmExp2x86 - MEM had to dereference an invalid operand: " ++ show op
 
 

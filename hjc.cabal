@@ -15,6 +15,8 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
+  build-tools:         happy >= 1.15 && < 2,
+                       alex >= 2.0 && < 4
   exposed-modules:     Lexer
                      , AST
                      , ASTParser
@@ -36,6 +38,17 @@ library
                      , Cmm.Backend
                      , Cmm.X86.Backend
                      , Cmm.X86.Core
+                     , Risc386Clone.IntelMain
+                     , Risc386Clone.Frame
+                     , Risc386Clone.FrameIntel
+                     , Risc386Clone.GenSym
+                     , Risc386Clone.Intel
+                     , Risc386Clone.LexIntel
+                     , Risc386Clone.ParseIntel
+                     , Risc386Clone.StateIntel
+                     , Risc386Clone.TokenIntel
+                     , Risc386Clone.Util
+                     , Risc386Clone.Wellformed
   build-depends:       base         >= 4.7     && < 5
                      , megaparsec   >= 5.2.0   && < 6
                      , containers   >= 0.5.7.1 && < 6
@@ -47,6 +60,8 @@ library
                      , split > 0.2.3.0 && < 0.3.0.0
                      , optparse-generic >= 1.1.5
                      , extra            >= 1.5
+                     , pretty >= 1.0 && < 1.2
+                     , array >= 0.5 && < 0.6
   default-language:    Haskell2010
 
 executable hjc
@@ -77,6 +92,7 @@ test-suite hjc-test
                      , QuickCheck >= 2.9.2
                      , hspec >= 2.4.3
                      , process      >= 1.4.3.0
+                     , directory    >= 1.0.0.0
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
 

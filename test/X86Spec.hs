@@ -6,25 +6,23 @@ import TypeCheck.TypeCheck
 import qualified TypeCheck.TCCore as T
 import Output
 import Config
+import Risc386Clone.IntelMain
 
 import Test.Hspec
 import Test.QuickCheck
 import Control.Exception (evaluate)
 import Control.Monad
 import Text.Megaparsec
-import System.Process
-import System.Exit
-
+import System.Directory
 
 main :: IO ()
 main = hspec spec
 
 spec :: Spec
 spec = do
-    describe "X86" $ do
-        describe "should be successful for small test" $ do
-            let showTypeErrors      = True
-                successfulTitle     = "should run via risc386: "
+        describe "should be successful for small tests" $ do
+            let showTypeErrors      = False
+                successfulTitle     = "should emulate "
                 pathToTestFile      = "test/examples/MiniJava_Examples/Small/"
                 successfulFileNames = [
                       "Add"
@@ -45,17 +43,20 @@ spec = do
                 testList            = zip successfulFileNames (iterate id successfulTitle)
 
             mapM_ (\(input, title) -> it (title ++ input) $ do
-                let inputFile = "test/examples/MiniJava_Examples/Small/" ++ input ++ ".java"
+                let inputFile = pathToTestFile ++ input ++ ".java"
+                let asmFile = ((("x86-output/") ++ input ++".s")::FilePath)
                 run inputFile False
-                makeC input >>= \b -> b `shouldBe` ExitSuccess) testList -- (risc does it the other way around 1 ~ Failure, 0 ~ Success)
+                result <- newMain asmFile
+                removeFile asmFile
+                result `shouldBe` (Just True)) testList
 
         describe "should be successful for large tests" $ do
             let showTypeErrors      = True
-                successfulTitle     = "should have zero length of typescope errors in "
+                successfulTitle     = "should emulate "
                 pathToTestFile      = "test/examples/MiniJava_Examples/Large/"
                 successfulFileNames = [
                       "BinarySearch"
-                    , "BinaryTree"
+                    -- , "BinaryTree"
                     , "BubbleSort"
                     , "Fib"
                     , "FibL"
@@ -63,7 +64,7 @@ spec = do
                     , "LinearSearch"
                     , "LinkedList"
                     , "ManyArgs"
-                    , "Newton"
+                   -- , "Newton"
                     , "Primes"
                     , "QuickSort"
                     ]
@@ -71,18 +72,12 @@ spec = do
                 testList            = zip successfulFileNames (iterate id successfulTitle)
 
             mapM_ (\(input, title) -> it (title ++ input) $ do
-                let inputFile = "test/examples/MiniJava_Examples/Large/" ++ input ++ ".java"
+                let inputFile = pathToTestFile ++ input ++ ".java"
+                let asmFile = ((("x86-output/") ++ input ++".s")::FilePath)
                 run inputFile False
-                makeC input >>= \b -> b `shouldBe` ExitSuccess) testList -- (risc does it the other way around 1 ~ Failure, 0 ~ Success)
-
-
-makeC :: String -> IO ExitCode
-makeC inputFile = do
-    (_, Just hout, _, ph) <- createProcess (proc "risc386" [inputFile ++ ".s", ">", "/dev/null", "2>&1"]){ cwd = Just "x86-output", std_out = CreatePipe }
-    eC <- waitForProcess ph
-    -- (_, _, _, cleanH) <- createProcess (proc "rm" ["*.s"]){ cwd = Just "x86-output", std_out = CreatePipe }
-    -- _ <- waitForProcess cleanH
-    return eC
+                result <- newMain asmFile
+                removeFile asmFile
+                result `shouldBe` (Just True)) testList
 
 
 testConfig :: Config
@@ -94,7 +89,7 @@ testConfig = Config
     , showTime'     = True
     , compileToCmm  = True
     , compileToX86  = True
-    , canonizeCmm   = False
+    , canonizeCmm   = True
     , javaOutputDir = "output"
     , cmmOutputDir  = "cmm-output"
     , x86OutputDir  = "x86-output"
@@ -113,7 +108,6 @@ run inputFile showTypeErrors = do
         (Right ast)   -> do
             typescope <- typecheck ast
             let oi = success inputFile input (0 :: Double) ast typescope
-            -- writeCmmOutput  oi testConfig
             writeX86Output oi testConfig
             when showTypeErrors $ showErrors typescope
             return $ (0 < (length $ T._errors typescope))

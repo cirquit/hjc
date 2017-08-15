@@ -1,0 +1,130 @@
+
+Experimenteller i386 Simulator
+(Haskell sources (ghc-6.4 und h&ouml;her) und Linux-binary) 
+<i>risc386</i>.  
+
+<p>
+Besonderes Feature: Erlaubt eine unbegrenzte Zahl von Hilfsregistern t0,t1,... Diese werden bei Funktionsaufruf automatisch gesichert und bei Rückkehr rückgesichert.  Man kann also seinen Code vor Registerzuweisung testen.<br>
+Eingabeformat:
+<ul>
+<li>Liest <code>.s</code>-Dateien in Intel syntax. Beispiel <a href="MiniJava/Factorial.raw.s">Factorial.raw.s</a>:
+<code><pre>
+        .intel_syntax
+        .type LFactorial$main, @function
+LFactorial$main:
+        push    %ebp
+        mov     %ebp, %esp
+L3:     push    0
+        call    L_halloc
+        add     %esp, 4
+        mov     t1001, %eax
+        push    10
+        push    t1001
+        call    LFac$ComputeFac
+        add     %esp, 8
+        mov     t1002, %eax
+        push    t1002
+        call    L_println_int
+        add     %esp, 4
+L4:     leave
+        ret
+        .type LFac$ComputeFac, @function
+        #args LOC 0, LOC 4
+LFac$ComputeFac:
+        push    %ebp
+        mov     %ebp, %esp
+L5:     cmp     DWORD PTR [%ebp+12], 1
+        jl      L0
+        jmp     L1
+L2:     mov     %eax, t8
+        jmp     L6
+L1:     mov     t1004, DWORD PTR [%ebp+12]
+        mov     t1005, -1
+        add     t1005, DWORD PTR [%ebp+12]
+        push    t1005
+        push    DWORD PTR [%ebp+8]
+        call    LFac$ComputeFac
+        add     %esp, 8
+        mov     t1003, %eax
+        mov     %eax, t1004
+        imul    t1003
+        mov     t8, %eax
+        jmp     L2
+L0:     mov     t8, 1
+        jmp     L2
+L6:     leave
+        ret
+</pre></code>
+
+<li><code>as</code>-Direktiven, beginnend mit "." (Punkt), werden ignoriert.
+<li>Zeilen, die mit "# " (Doppelkreuz Leer) beginnen (Kommentare),
+werden ebenfalls ignoriert.
+<li>Das erste Label startet die erste Prozedur, die mit <code>ret</code> endet.
+<li>Will man dem Simulator die Argumente der Prozedur mitteilen
+(für schönere Traces), tut man das mit dem Pragma
+<code>#args</code>, gefolgt von einer Komma-separierten Liste von
+Argumentdeskriptoren im muHwI-Stil.
+<li>Die Prozedur, deren Name  auf <code>main</code> endet, wird ausgef&uuml;hrt.
+</ul>
+
+Befehlssatz (RISC): Sehr reduziert, nur 32bit-Befehle
+
+<ul>
+<li>Zuweisung: <code>mov</code> 
+<li>Arithmetik: <code>add sub imul idiv cdq neg inc dec lea sal sar</code>
+<li>Booleans: <code>and or xor not</code>
+<li>Stack: <code>push pop leave</code> und <code>enter _,0</code>
+<li>Kontrollfluss: <code>call ret jmp je jne jl jle jg jge</code>
+<li>Flags: <code>cmp</code> (Nur dieser Befehl setzt Flags, entgegen der Intel Spec.)
+</ul>
+
+Speichermodell - Heap:
+
+<ul>
+
+<li>Mit <code>h_alloc</code> kann
+man sich eine Heap-Zelle anfordern, diese werden als <code>h0</code>,
+<code>h1</code>, ... geschrieben.
+
+<li>Eine Heapadresse besteht aus einem Zellen-Bezeichner und einem
+Offset, also z.B. <code>h1:0</code> für die Länge des bei
+<code>h1</code> liegenden Arrays oder <code>h0:4</code> für das
+erste Feld des Objektes in der Zelle <code>h0</code>.  
+
+<li>Offsets, die nicht durch 4 teilbar sind oder aus der Zelle herauszeigen, sind ungültig.
+
+<li>Zugriff auf eine ungültige Heap-Adresse wirft eine Ausnahme.
+
+<li>Ebenso das Laden einer nicht-initialisierten Heap-Adresse.
+
+</ul>
+
+Speichermodell - Stack:
+
+<ul>
+<li>Der Stack ist ein linearer Adressraum, getrennt vom Heap.
+
+<li>Interna: beginnt mit 0, nach unten wachsend (also Stackadressen
+sind intern negativ).
+
+<li>Die Register <code>esp</code> und <code>ebp</code> dürfen nur mit Stack-Adressen geladen werden.
+</ul>
+
+Kontrollfluss:
+<ul>
+
+<li>Jumps und calls nur auf feste labels!
+
+<li><code>call</code> legt eine Rücksprungadresse auf den Stack, die von <code>ret</code> wieder entfernt wird.  Intern ist das der Bezeichner der aufgerufenen Funktion.  Die Sprungadresse kann nicht verwendet werden.
+
+<li>Ein call sichert alle temp-Register.
+
+</ul>
+
+Debugging:
+<ul>
+<li>risc386 schreibt einen Call- und execution-trace nach stderr, mehr gibts im Moment noch nicht.
+</ul>
+
+</ol>
+
