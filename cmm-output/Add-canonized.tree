@@ -1,5 +1,0 @@
-Lmain(0) {
-  MOVE(TEMP(t1), CALL(NAME(L_println_int), BINOP(PLUS, CONST(1), CONST(2))))
-  MOVE(TEMP(t2), CONST(0))
-  return t2
-}
