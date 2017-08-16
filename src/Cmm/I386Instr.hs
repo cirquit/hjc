@@ -6,7 +6,7 @@ import Cmm.Backend          (MachineInstr(..), MachineFunction(..), MachinePrg(.
 import Data.Int
 import Text.Printf
 
-data SizeDirective = 
+data SizeDirective =
       BYTE
     | WORD
     | DWORD
@@ -20,7 +20,7 @@ instance Show SizeDirective where
 
 data UnaryInstr =
       PUSH
-    | POP  
+    | POP
     | NEG
     | NOT
     | INC
@@ -37,9 +37,9 @@ instance Show UnaryInstr where
   show IDIV = "idiv"
 
 data BinayInstr =
-      MOV 
+      MOV
     | ADD
-    | SUB 
+    | SUB
     | SHL
     | SHR
     | SAL
@@ -71,11 +71,11 @@ data Cond = E | NE | L | LE | G | GE | Z
 
 -- used with 'j' prefix
 instance Show Cond where
-    show E  = "e" 
+    show E  = "e"
     show NE = "ne"
-    show L  = "l" 
+    show L  = "l"
     show LE = "le"
-    show G  = "g" 
+    show G  = "g"
     show GE = "ge"
     show Z  = "z"
 
@@ -159,7 +159,7 @@ instance Show Operand where
     show (Mem ea)  = show ea
 
 instance Show EffectiveAddress where
-  
+
     show ea = 
         let c = show (displacement ea) in
         case (base ea, indexScale ea) of
@@ -205,28 +205,69 @@ instance MachineFunction X86Func X86Instr where
 -- |                     i
 instance MachineInstr X86Instr where
 
---  use  :: i -> [Temp] 
-    use _                = undefined
+--  use  :: i -> [Temp]
+    use i                = x86Use i
 
 --  def  :: i -> [Temp]
-    def _                = undefined
+    def i                = x86Def i
 
 --  isMoveBetweenTemps :: i -> Maybe (Temp, Temp)
-    isMoveBetweenTemps _ = undefined
+    isMoveBetweenTemps i = x86MovT i
 
 --  isAssignmentToTemp :: i -> Maybe Temp
-    isAssignmentToTemp _ = undefined
+    isAssignmentToTemp i = x86AssignT i
 
 --  jumps :: i -> [Label]
-    jumps _              = undefined
+    jumps i              = x86Jump i
 
 --  isFallThrough :: i -> Bool
-    isFallThrough _      = undefined
+    isFallThrough i      = x86FallThrough i
 
 --  isLabel :: i -> Maybe Label
-    isLabel _            = undefined
+    isLabel i            = x86Label i
 
 --  renameInstr :: i -> (Temp -> Temp) -> i
-    renameInstr _        = undefined
+    renameInstr i f      = x86Rename i f
 
 
+x86Use (Unary  _   (_, (Reg t))) = [t]
+x86Use (Binary _ _ (_, (Reg t))) = [t]
+x86Use _                         = []
+
+
+x86Def (Unary  _ (_,(Reg t))  )  = [t]
+x86Def (Binary _ (_,(Reg t)) _)  = [t]
+x86Def _                          = []
+
+
+x86MovT (Binary _ (_, Reg t1) (_, Reg t2)) = Just (t1, t2)
+x86MovT _                                  = Nothing
+
+
+x86AssignT (Unary _  (_, (Reg t))   )  = Just t
+x86AssignT (Binary _ (_, (Reg t1)) _)  = Just t1
+x86AssignT _                           = Nothing
+
+
+-- x86Jump (CALL l) = [l]
+x86Jump (JMP l)  = [l]
+x86Jump (J _ l)  = [l]
+x86Jump _        = []
+
+
+x86Label (LABEL l) = Just l
+x86Label _         = Nothing
+
+
+x86Rename (Unary i (s, Reg t)) f                 = Unary  i (s,  Reg (f t))
+x86Rename (Unary i (s, Mem m)) f                 = Unary  i (s,  Mem (rMem f m))
+x86Rename (Binary i (s1, Reg t1) (s2, Reg t2)) f = Binary i (s1, Reg (f t1)) (s2, Reg (f t2))
+x86Rename (Binary i (s1, Mem m1) (s2, Mem m2)) f = Binary i (s1, Mem (rMem f m1)) (s2, Mem (rMem f m2))
+x86Rename i _                                    = i
+
+rMem f (EffectiveAddress (Just t1) (Just (t2, s)) d) = EffectiveAddress (Just (f t1)) (Just ((f t2), s)) d
+
+
+x86FallThrough (RET)   = False
+x86FallThrough (JMP _) = False
+x86FallThrough _       = True
