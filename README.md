@@ -4,7 +4,7 @@ The Haskell MiniJava Compiler build at the LMU course "Compiler Construction"
 
 ### To use the C-- Backend
 
-Compile to `name.tree` with a configurable flag (missing).
+Compile to `name.tree` with a configurable flag defined in the `Main.hs`.
 Install the tree2c tool:
 
 ```
@@ -22,6 +22,19 @@ In my case, this only worked with `clang-3.8`.
 > tree2c <name>-cmm.tree > <name>.c
 > gcc -m32 <name>.c runtime.c -o <name>
 > ./name
+```
+
+Otherwise, in the `cmm-output` folder, there is a prepared `Makefile`, which can be run by `make file=Add-canonized.tree`.
+
+### Graph vizualization
+
+Install the graphviz program - `sudo apt-get install graphviz`.
+Set the config flag `createCFGraph = True` and run `main' "ProgramName"`
+To show the graph as PostScript file:
+
+```bash
+> cd cf-graph-output
+> dot -Tps ProgramName.dot -o output.ps
 ```
 
 
@@ -84,7 +97,8 @@ stack test --file-watch --test-arguments "-m "TypeCheck/TypeCheck" --fail-fast"
     * `111`: IndexOutOfBounds
 
 * Debug with `gdb`
-```haskell
+
+```bash
 > gdb ./testprog
 
 >>> tui enable  -- enables a terminal ui

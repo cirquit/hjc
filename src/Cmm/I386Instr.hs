@@ -11,6 +11,7 @@ data SizeDirective =
     | WORD
     | DWORD
     | QWORD -- 64 bit won't be supported for the time being
+  deriving (Eq, Ord)
 
 instance Show SizeDirective where
     show BYTE  = "BYTE"
@@ -26,6 +27,7 @@ data UnaryInstr =
     | INC
     | DEC
     | IDIV
+  deriving (Eq, Ord)
 
 instance Show UnaryInstr where
   show PUSH = "push"
@@ -51,6 +53,7 @@ data BinayInstr =
     | CMP
     | LEA
     | IMUL
+  deriving (Eq, Ord)
 
 instance Show BinayInstr where
     show MOV  = "mov"
@@ -68,6 +71,7 @@ instance Show BinayInstr where
     show IMUL = "imul"
 
 data Cond = E | NE | L | LE | G | GE | Z
+  deriving (Eq, Ord)
 
 -- used with 'j' prefix
 instance Show Cond where
@@ -80,7 +84,7 @@ instance Show Cond where
     show Z  = "z"
 
 data Scale = S2 | S4 | S8 -- possible scaling values for effective addressing
-  deriving Show
+  deriving (Eq, Ord, Show)
 
 scaleToInt :: Scale -> Int32
 scaleToInt S2 = 2
@@ -88,14 +92,16 @@ scaleToInt S4 = 4
 scaleToInt S8 = 8
 
 data EffectiveAddress = EffectiveAddress
-   { base         :: Maybe Temp
-   , indexScale   :: Maybe (Temp, Scale)
-   , displacement :: Int32
-   }
+    { base         :: Maybe Temp
+    , indexScale   :: Maybe (Temp, Scale)
+    , displacement :: Int32
+    }
+  deriving (Eq, Ord)
 
 data Operand = Imm Int32
              | Reg Temp
              | Mem EffectiveAddress
+  deriving (Eq, Ord)
 
 data X86Instr = Unary  UnaryInstr (Maybe SizeDirective, Operand)
               | Binary BinayInstr (Maybe SizeDirective, Operand)
@@ -107,9 +113,11 @@ data X86Instr = Unary  UnaryInstr (Maybe SizeDirective, Operand)
               | CALL Label
               | RET
               | NOP
+  deriving (Eq, Ord)
 
 data X86Comment = X86Comment String
-
+  deriving (Eq, Ord)
+  
 comment :: String -> X86Comment
 comment = X86Comment
 
@@ -123,12 +131,12 @@ data X86Func = X86Func {
     x86functionName :: String
   , x86body         :: [X86Instr]
   , x86comments     :: [X86Comment]
-  } 
+  } deriving (Eq, Ord) 
 
 data X86Prog = X86Prog {
     x86functions :: [X86Func]
-  }
-
+  } deriving (Eq, Ord)
+ 
 instance Show X86Prog where
     show p = concat ["\t.intel_syntax noprefix\n\t", ".global Lmain\n"]
           ++ concatMap (\x -> show x ++ "\n") (x86functions p)

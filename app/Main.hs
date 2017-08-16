@@ -31,9 +31,11 @@ mainConfig = defaultConfig  {
     , compileToCmm  = True
     , canonizeCmm   = True
     , compileToX86  = True
+    , createCFGraph = True
     , javaOutputDir = "../output"
     , cmmOutputDir  = "../cmm-output"
     , x86OutputDir  = "../x86-output"
+    , cfOutputDir   = "../cf-graph-output"
     , typeErrLvl    = AllErrors -- FirstError -- Silently 
     }
 
@@ -99,10 +101,10 @@ evaluateProgram config inputFile = do
                 time_ $ showSuccess   oi config
 
                 -- parsing ast to java
-                time_ $ writeJavaOutput oi config
-                time_ $ writeCmmOutput  oi config
-                time_ $ writeX86Output  oi config
-
+                time_ $ writeJavaOutput    oi config
+                time_ $ writeCmmOutput     oi config
+                time_ $ writeX86Output     oi config
+                time_ $ writeCFGraphOutput oi config
                 ms <- getTimeInMs
                 return oi { timeS = parseTime + ms }
 

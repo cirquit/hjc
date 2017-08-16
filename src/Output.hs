@@ -21,7 +21,7 @@ import           Cmm.I386Instr
 import           Cmm.LabelGenerator
 
 import           Cmm.X86.Backend                     (generatex86)
-
+import           Cmm.X86.ControlFlowGraph            (createDirectedGraph)
 
 data OutputInfo = OutputInfo {
     fileName    :: String
@@ -171,3 +171,18 @@ writeX86Output (OutputInfo inputName _ _ (Just ast) _ _) conf = when (compileToX
     putChunk $ (chunk ">> ")
     putChunk $ (chunk "Written: ") & fore green
     putChunk $ (chunk outputName) <> (chunk "\n") & bold
+
+writeCFGraphOutput :: OutputInfo -> Config -> IO ()
+writeCFGraphOutput (OutputInfo inputName _ _ (Just ast) _ _) conf = when (createCFGraph conf) $ do
+    let _ : name : _ = reverse <$> (LS.splitOneOf "./" $ reverse inputName)
+        outputName = (cfOutputDir conf) </> (name ++ ".dot")
+    result <- generatex86 ast
+    let cfgraph = createDirectedGraph result
+    writeFile outputName (concatMap show cfgraph)
+    putChunk $ (chunk ">> ")
+    putChunk $ (chunk "Written: ") & fore green
+    putChunk $ (chunk outputName) <> (chunk "\n") & bold
+
+
+
+

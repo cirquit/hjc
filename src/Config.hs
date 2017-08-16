@@ -20,9 +20,11 @@ data Config = Config {
   , canonizeCmm   :: Bool
   , compileToCmm  :: Bool
   , compileToX86  :: Bool
+  , createCFGraph :: Bool
   , javaOutputDir :: FilePath
   , cmmOutputDir  :: FilePath
   , x86OutputDir  :: FilePath
+  , cfOutputDir   :: FilePath
   , typeErrLvl    :: TypeErrorLevel
 } deriving (Show)
 
@@ -35,19 +37,19 @@ defaultConfig = Config {
   , canonizeCmm   = False
   , compileToCmm  = False
   , compileToX86  = False
+  , createCFGraph = False
   , javaOutputDir = "output"
   , cmmOutputDir  = "cmm-output"
   , x86OutputDir  = "x86-output"
+  , cfOutputDir   = "cf-graph-output"
   , typeErrLvl    = AllErrors
 }
-
 
 data CmdParam = CmdParam {
     path        :: String
   , typeErrLvl' :: TypeErrorLevel
   , wholeDir    :: Bool
 } deriving (Eq, Show)
-
 
 cmdP :: Parser CmdParam
 cmdP = do
@@ -62,6 +64,3 @@ cmdP = do
 
 identifier :: Parser String
 identifier = (:) <$> (alphaNumChar <|> char '.') <*> many (alphaNumChar <|> char '.' <|> char '/' <|> char '_')
-
-
-
