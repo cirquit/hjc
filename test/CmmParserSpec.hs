@@ -29,7 +29,7 @@ spec = do
         describe "should be successful for small test" $ do
             let showTypeErrors      = True
                 successfulTitle     = "should have zero length of typescope errors in "
-                pathToTestFile      = "test/examples/MiniJava_Examples/Small/"
+                pathToTestFile      = "examples/MiniJava_Examples/Small/"
                 successfulFileNames = [
                       "ArrayAccess"
                     , "ArrSum"
@@ -48,14 +48,14 @@ spec = do
                 testList            = zip successfulFileNames (iterate id successfulTitle)
 
             mapM_ (\(input, title) -> it (title ++ input) $ do
-                let inputFile = "test/examples/MiniJava_Examples/Small/" ++ input ++ ".java"
+                let inputFile = "examples/MiniJava_Examples/Small/" ++ input ++ ".java"
                 hasTypeErrors inputFile False
                 makeC input >>= \b -> b `shouldBe` ExitSuccess) testList
 
         describe "should be successful for large test" $ do
             let showTypeErrors      = True
                 successfulTitle     = "should have zero length of typescope errors in "
-                pathToTestFile      = "test/examples/MiniJava_Examples/Large/"
+                pathToTestFile      = "examples/MiniJava_Examples/Large/"
                 successfulFileNames = [
                       "BinarySearch"
                     , "BinaryTree"
@@ -74,7 +74,7 @@ spec = do
                 testList            = zip successfulFileNames (iterate id successfulTitle)
 
             mapM_ (\(input, title) -> it (title ++ input) $ do
-                let inputFile = "test/examples/MiniJava_Examples/Large/" ++ input ++ ".java"
+                let inputFile = "examples/MiniJava_Examples/Large/" ++ input ++ ".java"
                 hasTypeErrors inputFile False
                 makeC input >>= \b -> b `shouldBe` ExitSuccess) testList
 

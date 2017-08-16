@@ -23,7 +23,7 @@ spec = do
         describe "should be successful for small tests" $ do
             let showTypeErrors      = False
                 successfulTitle     = "should emulate "
-                pathToTestFile      = "test/examples/MiniJava_Examples/Small/"
+                pathToTestFile      = "examples/MiniJava_Examples/Small/"
                 successfulFileNames = [
                       "Add"
                     , "ArrayAccess"
@@ -53,7 +53,7 @@ spec = do
         describe "should be successful for large tests" $ do
             let showTypeErrors      = True
                 successfulTitle     = "should emulate "
-                pathToTestFile      = "test/examples/MiniJava_Examples/Large/"
+                pathToTestFile      = "examples/MiniJava_Examples/Large/"
                 successfulFileNames = [
                       "BinarySearch"
                    -- , "BinaryTree"  -- takes too long for risc386
