@@ -28,16 +28,10 @@ spec = do
             let showTypeErrors      = True
                 successfulTitle     = "should have zero length of typescope errors in "
                 successfulFileNames = [
-                      "examples/Add.java"
-                    , "examples/Arg.java"
+                      "examples/Arg.java"
                     , "examples/Arithmetic.java"
-                    , "examples/BinarySearch.java"
-                    , "examples/Add.java"
-                    , "examples/BinarySearch.java"
-                    , "examples/BinaryTree.java"
-                    , "examples/BlockStatement.java"
                     , "examples/Brainfuck.java"
-                    , "examples/BubbleSort.java"
+                    , "examples/BlockStatement.java"
                     , "examples/Call.java"
                     , "examples/CallThis.java"
                     , "examples/Comparisons.java"
@@ -53,12 +47,16 @@ spec = do
                     , "examples/LinkedList.java"
                     , "examples/Loops.java"
                     , "examples/Min.java"
-                    , "examples/QuickSort.java"
                     , "examples/RaytraceAndGauss.java"
                     , "examples/Raytrace.java"
                     , "examples/Spill.java"
                     , "examples/StackArgs.java"
                     , "examples/TreeVisitor.java"
+                    , "examples/MiniJava_Examples/Small/Add.java"
+                    , "examples/MiniJava_Examples/Large/BubbleSort.java"
+                    , "examples/MiniJava_Examples/Large/QuickSort.java"
+                    , "examples/MiniJava_Examples/Large/BinarySearch.java"
+                    , "examples/MiniJava_Examples/Large/BinaryTree.java"
                     ]
 
                 testList            = zip successfulFileNames (iterate id successfulTitle)
