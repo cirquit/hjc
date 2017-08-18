@@ -36,10 +36,12 @@ library
                      , Cmm.Canon
                      , Cmm.I386Instr
                      , Cmm.Backend
-                     , Cmm.DirectedGraph
                      , Cmm.X86.Backend
                      , Cmm.X86.Core
-                     , Cmm.X86.ControlFlowGraph
+                     , Cmm.DirectedGraph
+                     , Cmm.ControlFlowGraph
+                     , Cmm.ActivityAnalysis
+                     , Cmm.InterferenceGraph
                      , Risc386Clone.IntelMain
                      , Risc386Clone.Frame
                      , Risc386Clone.FrameIntel

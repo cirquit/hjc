@@ -98,9 +98,11 @@ testConfig = Config
     , compileToCmm  = True
     , compileToX86  = False
     , canonizeCmm   = True 
+    , createCFGraph = True
     , javaOutputDir = "output"
     , cmmOutputDir  = "cmm-output"
     , x86OutputDir  = "x86-output"
+    , cfOutputDir   = "cf-graph-output"
     , typeErrLvl   = AllErrors -- FirstError -- Silently 
     }
 

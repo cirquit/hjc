@@ -1,3 +1,5 @@
+{-# LANGUAGE BangPatterns #-}
+
 module Output where
 
 import           Text.Megaparsec
@@ -19,9 +21,11 @@ import           Cmm.ASTToCmm                        (ast2cmms, ast2cmm, ast2ccm
 import           Cmm.Backend
 import           Cmm.I386Instr
 import           Cmm.LabelGenerator
+import           Cmm.ControlFlowGraph                (createControlFlowGraph)
+import           Cmm.ActivityAnalysis                (activityAnalysis)
+import           Cmm.InterferenceGraph               (createInterferenceGraph)
 
 import           Cmm.X86.Backend                     (generatex86)
-import           Cmm.X86.ControlFlowGraph            (createDirectedGraph)
 
 data OutputInfo = OutputInfo {
     fileName    :: String
@@ -177,12 +181,10 @@ writeCFGraphOutput (OutputInfo inputName _ _ (Just ast) _ _) conf = when (create
     let _ : name : _ = reverse <$> (LS.splitOneOf "./" $ reverse inputName)
         outputName = (cfOutputDir conf) </> (name ++ ".dot")
     result <- generatex86 ast
-    let cfgraph = createDirectedGraph result
-    writeFile outputName (concatMap show cfgraph)
+    let -- !cfgraph = createControlFlowGraph result
+        -- !activity = map activityAnalysis cfgraph
+        !ifgraph  = createInterferenceGraph result
+    writeFile outputName (concatMap show ifgraph)
     putChunk $ (chunk ">> ")
     putChunk $ (chunk "Written: ") & fore green
     putChunk $ (chunk outputName) <> (chunk "\n") & bold
-
-
-
-

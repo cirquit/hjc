@@ -9,6 +9,11 @@ class Test {
 
     public int blub()
     {
-        return 1;
+        while (1 == 2) {
+            return 1;
+        }
+
+        int i = 10;
+        return i;
     }
 }

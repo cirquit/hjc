@@ -267,44 +267,6 @@ label_c l c = addSideEffects (XI.LABEL l) c
 nop_c :: (MonadNameGen m, MonadIO m) => X86Comment -> X86 m ()
 nop_c c = addSideEffects NOP c
 
--- | Registers
---
--- base pointer (register)
-ebp :: Operand
-ebp = Reg ebpT
-
-ebpT :: Temp
-ebpT = mkNamedTemp "%ebp"
-
--- stack pointer (register)
-esp :: Operand
-esp = Reg espT
-
-espT :: Temp
-espT = mkNamedTemp "%esp"
-
--- return register
-eax :: Operand
-eax = Reg eaxT
-
-eaxT :: Temp
-eaxT = mkNamedTemp "%eax"
-
--- math register (used for mathematic expressions)
-ecx :: Operand
-ecx = Reg ecxT
-
-ecxT :: Temp
-ecxT = mkNamedTemp "%ecx"
-
--- used to move the first argument to edx if not already a register
-edx :: Operand
-edx = Reg edxT
-
-edxT :: Temp
-edxT = mkNamedTemp "%edx"
-
-
 -- | comment shorthand
 --
 

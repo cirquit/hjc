@@ -28,6 +28,8 @@ import           Cmm.X86.Core
 import           Cmm.ASTToCmm                       (ast2ccmmGen)
 import           AST                                (MiniJava())
 
+import           Cmm.DirectedGraph
+import           Cmm.ControlFlowGraph
 
 -- | Main function
 --
@@ -181,7 +183,7 @@ paramx86 (PARAM n) = do
 --
 binopx86 :: (MonadNameGen m, MonadIO m) => CmmExp -> X86 m Operand
 binopx86 (BINOP binOp e1 e2) = do
-    nop           # "binop (" ++ litShow binOp ++ ")"
+    -- nop           # "binop (" ++ litShow binOp ++ ")"
     op1 <- cmmExp2x86 e1
     op2 <- cmmExp2x86 e2
 
@@ -252,8 +254,83 @@ instance CodeGen X86CodeGen X86Prog X86Func X86Instr where
               , _defaultSizeDirective = DWORD
             }
 
---  allRegisters :: c -> [Temp]
+--  allRegisters :: c -> Set Temp
     allRegisters c = undefined
 
---  generalPurposeRegisters :: c -> [Temp]
+--  generalPurposeRegisters :: c -> Set Temp
     generalPurposeRegisters c = undefined
+
+
+
+exampleProg :: X86Prog
+exampleProg = X86Prog $ [X86Func { x86functionName = "test"
+                                 , x86body         = body
+                                 , x86comments     = []
+                                 }]
+
+    where
+        body :: [X86Instr]
+        body = 
+          [
+             Binary MOV (Nothing, aOp) (Nothing, (XI.Imm 0))
+          ,  Binary ADD (Nothing, aOp) (Nothing, (XI.Imm 1))
+          ,  Binary MOV (Nothing, bOp) (Nothing, aOp)
+
+          ,  Binary MOV (Nothing, fOp) (Nothing, cOp)
+          ,  Binary ADD (Nothing, fOp) (Nothing, bOp)
+          ,  Binary MOV (Nothing, cOp) (Nothing, fOp)
+          
+          ,  Binary MOV (Nothing, hOp) (Nothing, bOp)
+          ,  Binary ADD (Nothing, hOp) (Nothing, (XI.Imm 2))
+          
+          ,  Binary MOV (Nothing, aOp) (Nothing, hOp)
+          ,  RET
+          ]
+
+
+
+
+
+aOp :: Operand
+aOp = Reg $ mkNamedTemp "a"
+
+bOp :: Operand
+bOp = Reg $ mkNamedTemp "b"
+
+cOp :: Operand
+cOp = Reg $ mkNamedTemp "c"
+
+dOp :: Operand
+dOp = Reg $ mkNamedTemp "d"
+
+eOp :: Operand
+eOp = Reg $ mkNamedTemp "e"
+
+fOp :: Operand
+fOp = Reg $ mkNamedTemp "f"
+
+gOp :: Operand
+gOp = Reg $ mkNamedTemp "g"
+
+hOp :: Operand
+hOp = Reg $ mkNamedTemp "h"
+
+iOp :: Operand
+iOp = Reg $ mkNamedTemp "i"
+
+jOp :: Operand
+jOp = Reg $ mkNamedTemp "j"
+
+kOp :: Operand
+kOp = Reg $ mkNamedTemp "k"
+
+lOp :: Operand
+lOp = Reg $ mkNamedTemp "l"
+
+
+-- TODO - remove
+createExampleDot :: IO ()
+createExampleDot = do
+    let gs :: [DirectedGraph X86Instr]
+        gs = createControlFlowGraph exampleProg
+    writeFile "exampleProg.dot" (concatMap show gs)

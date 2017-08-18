@@ -2,9 +2,14 @@
 module Cmm.I386Instr where
 
 import Cmm.LabelGenerator
-import Cmm.Backend          (MachineInstr(..), MachineFunction(..), MachinePrg(..))
+import Cmm.Backend               (MachineInstr(..), MachineFunction(..), MachinePrg(..))
 import Data.Int
 import Text.Printf
+import Data.Maybe                (fromJust)
+import           Data.Set        (Set) 
+import qualified Data.Set as Set 
+import           Debug.Trace     (trace)
+
 
 data SizeDirective =
       BYTE
@@ -213,11 +218,11 @@ instance MachineFunction X86Func X86Instr where
 -- |                     i
 instance MachineInstr X86Instr where
 
---  use  :: i -> [Temp]
-    use i                = x86Use i
+--  use  :: i -> Set Temp
+    use i                = Set.fromAscList $ x86Use i
 
---  def  :: i -> [Temp]
-    def i                = x86Def i
+--  def  :: i -> Set Temp
+    def i                = Set.fromAscList $ x86Def i
 
 --  isMoveBetweenTemps :: i -> Maybe (Temp, Temp)
     isMoveBetweenTemps i = x86MovT i
@@ -237,20 +242,70 @@ instance MachineInstr X86Instr where
 --  renameInstr :: i -> (Temp -> Temp) -> i
     renameInstr i f      = x86Rename i f
 
+--  ret :: i
+    ret = RET
 
-x86Use (Unary  _   (_, (Reg t))) = [t]
-x86Use (Binary _ _ (_, (Reg t))) = [t]
-x86Use _                         = []
+addTemp :: Operand -> [Temp]
+addTemp (Reg t)
+  | espT == t = []
+  | ebpT == t = []
+  | otherwise = [t]
+addTemp (Mem ea)
+  | espT == t = []
+  | ebpT == t = []
+  | otherwise = [t]
+  where
+    t = fromJust $ base ea
+addTemp _        = []
+
+x86Use :: X86Instr -> [Temp]
+x86Use (Unary  POP  (_, _))  = []
+x86Use (Unary  PUSH (_, op)) = addTemp op
+x86Use (Unary  IDIV (_, op)) = addTemp op
+x86Use x@(Unary  _  (_, _))  = error $ "x86Use: didnt define rules for " ++ show x
+
+x86Use x@(Binary MOV  (_, _) (_, op)) = addTemp op -- trace ("Use Mov for: " ++ show x ++ ", with temp " ++ show (addTemp op)) (addTemp op)
+x86Use (Binary LEA  (_, _) (_, op)) = addTemp op
+
+x86Use (Binary ADD  (_, op1) (_, op2)) = addTemp op1 ++ addTemp op2
+x86Use (Binary SUB  (_, op1) (_, op2)) = addTemp op1 ++ addTemp op2
+x86Use (Binary AND  (_, op1) (_, op2)) = addTemp op1 ++ addTemp op2
+x86Use (Binary OR   (_, op1) (_, op2)) = addTemp op1 ++ addTemp op2
+x86Use (Binary XOR  (_, op1) (_, op2)) = addTemp op1 ++ addTemp op2
+x86Use (Binary CMP  (_, op1) (_, op2)) = addTemp op1 ++ addTemp op2
+x86Use (Binary IMUL (_, op1) (_, op2)) = addTemp op1 ++ addTemp op2
+x86Use x@(Binary _  (_, _)   (_, _))   = error $ "x86Use: didnt define rules for " ++ show x
+
+x86Use  RET                      = [eaxT]
+x86Use x@_                       = [] -- trace ("No temps for this guy: " ++ show x) []
 
 
-x86Def (Unary  _ (_,(Reg t))  )  = [t]
-x86Def (Binary _ (_,(Reg t)) _)  = [t]
-x86Def _                          = []
+x86Def :: X86Instr -> [Temp]
+x86Def (Unary  POP  (_, op)) = addTemp op
+x86Def (Unary  PUSH (_, _))  = []
+x86Def (Unary  IDIV (_, _))  = [edxT, eaxT]
+x86Def x@(Unary _   (_, _))  = error $ "x86Def: didnt define rules for " ++ show x
+
+x86Def x@(Binary MOV    (_, op) (_, _)) = addTemp op -- trace ("Def Mov for: " ++ show x ++ ", with temp " ++ show (addTemp op)) (addTemp op)
+x86Def (Binary LEA    (_, op) (_, _)) = addTemp op
+x86Def (Binary ADD    (_, op) (_, _)) = addTemp op
+x86Def (Binary SUB    (_, op) (_, _)) = addTemp op
+x86Def (Binary AND    (_, op) (_, _)) = addTemp op
+x86Def (Binary OR     (_, op) (_, _)) = addTemp op
+x86Def (Binary XOR    (_, op) (_, _)) = addTemp op
+x86Def (Binary CMP    (_, _)  (_, _)) = []
+x86Def (Binary IMUL   (_, op) (_, _)) = addTemp op
+x86Def x@(Binary _    (_, op) (_, _)) = error $ "x86Def: didnt define rules for " ++ show x
+
+x86Def (CALL _) = [eaxT]
+x86Def x@_                         = [] -- trace ("No temps for this guy: " ++ show x) []
 
 
-x86MovT (Binary _ (_, Reg t1) (_, Reg t2)) = Just (t1, t2)
-x86MovT _                                  = Nothing
 
+x86MovT (Binary _ (_, Reg t1) (_, Reg t2))
+  | (t1 == ebpT) || (t1 == espT) || (t2 == ebpT) || (t2 == espT) = Nothing
+  | otherwise                                            = Just (t1, t2)
+x86MovT _                                                = Nothing
 
 x86AssignT (Unary _  (_, (Reg t))   )  = Just t
 x86AssignT (Binary _ (_, (Reg t1)) _)  = Just t1
@@ -279,3 +334,44 @@ rMem f (EffectiveAddress (Just t1) (Just (t2, s)) d) = EffectiveAddress (Just (f
 x86FallThrough (RET)   = False
 x86FallThrough (JMP _) = False
 x86FallThrough _       = True
+
+
+
+
+-- | Registers
+--
+-- base pointer (register)
+ebp :: Operand
+ebp = Reg ebpT
+
+ebpT :: Temp
+ebpT = mkNamedTemp "%ebp"
+
+-- stack pointer (register)
+esp :: Operand
+esp = Reg espT
+
+espT :: Temp
+espT = mkNamedTemp "%esp"
+
+-- return register
+eax :: Operand
+eax = Reg eaxT
+
+eaxT :: Temp
+eaxT = mkNamedTemp "%eax"
+
+-- math register (used for mathematic expressions)
+ecx :: Operand
+ecx = Reg ecxT
+
+ecxT :: Temp
+ecxT = mkNamedTemp "%ecx"
+
+-- used to move the first argument to edx if not already a register
+edx :: Operand
+edx = Reg edxT
+
+edxT :: Temp
+edxT = mkNamedTemp "%edx"
+
