@@ -24,20 +24,21 @@ import           Debug.Trace            (trace)
 import           Data.Maybe             (fromJust)
 
 createInterferenceGraph ::
-  (MachinePrg p f i, Ord i, Show i)
-  => p
-  -> [DirectedGraph Temp]
-createInterferenceGraph program = do
-    let -- cfgraph :: [DirectedGraph i]
-        cfgraph = createControlFlowGraph program
-        -- activity :: [Map i ActivityStorage]
-        activity = map activityAnalysis cfgraph
-        -- instructions :: [Set i]
-        instructions = map nodes cfgraph
+  (MachineFunction f i, Ord i, Show i)
+  => f
+  -> DirectedGraph Temp
+createInterferenceGraph function = do
+    let -- cfgraph :: DirectedGraph i
+        cfgraph = createControlFlowGraph function
+        -- activity :: Map i ActivityStorage
+        activity = activityAnalysis cfgraph
+        -- instructions :: Set i
+        instructions = nodes cfgraph
         -- states :: (Map i ActivityStorage, i)
-        states = zip activity instructions
+        states = (activity, instructions)
 
-    map singleInterferenceGraph states
+    singleInterferenceGraph states
+
   where
 
     singleInterferenceGraph :: (MachineInstr i, Ord i, Show i) => (Map i ActivityStorage, Set i) -> DirectedGraph Temp
@@ -50,7 +51,6 @@ createInterferenceGraph program = do
             Nothing -> do
                 let defs = Set.toAscList $ def i
                     outs = Set.toAscList $ out_a $ activity Map.! i
-                    !a   = trace ("outs for " ++ show i ++ ": " ++ concatMap show outs) 1
                     edges = concatMap (\d -> zip (repeat d) outs) defs
                     g'   = foldl' addNode graph (defs ++ outs)
                     g''  = foldl' (\g (x,y) -> addEdge g x y) g' edges
@@ -60,3 +60,12 @@ createInterferenceGraph program = do
                     edges = zip (repeat src) outs
                     g'    = foldl' (\g (x,y) -> addEdge g x y) graph edges
                 (g', activity)
+
+
+
+
+
+
+
+
+

@@ -42,6 +42,7 @@ library
                      , Cmm.ControlFlowGraph
                      , Cmm.ActivityAnalysis
                      , Cmm.InterferenceGraph
+                     , Cmm.RegisterAllocation
                      , Risc386Clone.IntelMain
                      , Risc386Clone.Frame
                      , Risc386Clone.FrameIntel

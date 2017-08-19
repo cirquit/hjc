@@ -61,7 +61,6 @@ toList g node = reverse $ go g [node] []
         | otherwise    = do
             let children = Set.toAscList $ successors g n
             go g (children ++ ns) (n:acc)
-  
 
 -- | dot graph visualization
 -- The output can be opened

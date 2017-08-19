@@ -1,14 +1,22 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
 module Cmm.I386Instr where
 
-import Cmm.LabelGenerator
-import Cmm.Backend               (MachineInstr(..), MachineFunction(..), MachinePrg(..))
-import Data.Int
-import Text.Printf
-import Data.Maybe                (fromJust)
-import           Data.Set        (Set) 
+import           Cmm.LabelGenerator
+import           Cmm.Backend         (MachineInstr(..), MachineFunction(..), MachinePrg(..))
+import           Data.Int
+import           Text.Printf
+import           Data.Maybe          (fromJust)
+import           Data.Map            (Map) 
+import qualified Data.Map as Map
+import           Data.Set            (Set) 
 import qualified Data.Set as Set 
-import           Debug.Trace     (trace)
+import           Debug.Trace         (trace)
+
+import           Control.Monad.Trans.State
+import           Control.Monad.Trans.Class          (lift)
+import           Control.Monad.IO.Class
+import           Control.Lens                       hiding ((#), use)
+import           Control.Monad                      (when, zipWithM_, foldM)
 
 
 data SizeDirective =
@@ -136,6 +144,7 @@ data X86Func = X86Func {
     x86functionName :: String
   , x86body         :: [X86Instr]
   , x86comments     :: [X86Comment]
+  , x86spilledCount :: Int32
   } deriving (Eq, Ord) 
 
 data X86Prog = X86Prog {
@@ -196,7 +205,7 @@ instance MachinePrg X86Prog X86Func X86Instr  where
     machinePrgFunctions p = x86functions p
 
 --  replaceFunctions :: p -> [f] -> p 
-    replaceFunctions p fs = undefined
+    replaceFunctions p fs = X86Prog fs
 
 
 -- |                        f       i
@@ -209,11 +218,166 @@ instance MachineFunction X86Func X86Instr where
     machineFunctionBody f = x86body f
 
 --  machineFunctionRename :: f -> (Temp -> Temp) -> f
-    machineFunctionRename f replaceTemp = undefined
+    machineFunctionRename f replaceTemp = f { x86body = map (flip renameInstr replaceTemp) (x86body f) }
 
---  machineFunctionSpill :: MonadNameGen m => f -> [Temp] -> m f
-    machineFunctionSpill f ts = undefined
+--  machineFunctionSpill :: MonadNameGen m => f -> Set Temp -> m f
+    machineFunctionSpill f st = do
+        state <- execStateT (spillTemps f) defaultSpilledState
+        return $ f { x86body         = reverse $ view body     state
+                   , x86comments     = reverse $ view comments state
+                   , x86spilledCount = view padding state }
+      where
+          defaultSpilledState = SpillState
+            {   _padding      = x86spilledCount f  -- current amount of elements on stack
+              , _body         = []
+              , _comments     = []
+              , _spilledTemps = st
+              , _tempPaddings = Map.empty
+              , _tempMappings = Map.empty
+            }
+
+
+spillTemps :: MonadNameGen m => X86Func -> Spill m ()
+spillTemps f = go (x86body f) (x86comments f)
+    where
+        go :: MonadNameGen m => [X86Instr] -> [X86Comment] -> Spill m ()
+        go []     []     = return ()
+        go (i:is) (c:cs) = do
+            st <- view spilledTemps <$> get
+            let used :: Set Temp
+                used = Set.intersection (use i) st
+
+                defd :: Set Temp
+                defd = Set.intersection (def i) st
+
+            usedInstructions   <- mapM genUsedInstructions $ Set.toAscList used
+            defdInstructions   <- mapM genDefsInstructions $ Set.toAscList defd
+            renamedInstruction <- replaceTemps i (used `Set.union` defd)
+
+            mapM_ addInstructon usedInstructions
+            addInstructon renamedInstruction
+            mapM_ addInstructon defdInstructions
+            go is cs
+
+
+genUsedInstructions :: MonadNameGen m => Temp -> Spill m X86Instr
+genUsedInstructions t = do
+    newTemp <- getNewTemp t
+    mpad <- Map.lookup t <$> (view tempPaddings <$> get)
+    case mpad of
+        Nothing    -> error $ "Cmm.I386Instr.checkUsedTemps: Temporary " ++ show t ++ " was used, but never initialized with a memory address"
+        (Just pad) -> do
+            let op = calculateMemoryAddress pad
+            return $ move (Reg newTemp) op
+
+genDefsInstructions :: MonadNameGen m => Temp -> Spill m X86Instr
+genDefsInstructions t = do
+    newTemp <- getRenamedTemp t
+    op      <- getMemoryOperand t
+    return $ move op (Reg newTemp)
+
+getRenamedTemp :: MonadNameGen m => Temp -> Spill m Temp
+getRenamedTemp t = do
+    mtemp <- Map.lookup t <$> (view tempMappings <$> get)
+    case mtemp of
+        Nothing        -> getNewTemp t
+        (Just newTemp) -> return newTemp
+
+getNewTemp :: MonadNameGen m => Temp -> Spill m Temp
+getNewTemp t = do
+    newTemp <- lift $ nextTemp'
+    tempMappings %= Map.insert t newTemp
+    return newTemp
+
+-- | if a padding is non-existent, the temorary was never 'defined' before and has to be
+--   given a new address
+getMemoryOperand :: MonadNameGen m => Temp -> Spill m Operand
+getMemoryOperand t = do
+    mpad <- Map.lookup t <$> (view tempPaddings <$> get)
+    case mpad of
+        Nothing -> do
+            pad <- view padding <$> get
+            tempPaddings %= Map.insert t pad
+            padding += 1
+            return $ calculateMemoryAddress pad
+        (Just pad) -> return $ calculateMemoryAddress pad
+
+
+move :: Operand -> Operand -> X86Instr
+move op1 op2 = Binary MOV (sizeDirective, op1) (sizeDirective, op2)
+  where
+      sizeDirective = Nothing
+
+calculateMemoryAddress :: Int32 -> Operand
+calculateMemoryAddress i =
+    let address = (-1) * 4 * (1 + i)
+    in  Mem $
+        EffectiveAddress
+        { base         = Just ebpT
+        , indexScale   = Nothing
+        , displacement = address
+        }
+
     
+addInstructon :: MonadNameGen m => X86Instr -> Spill m ()
+addInstructon i = appendInstrComm (i, emptyComment)
+
+appendInstrComm :: MonadNameGen m => (X86Instr, X86Comment) -> Spill m ()
+appendInstrComm (i, c) = do
+    body     %= \l -> (i:l)
+    comments %= \l -> (c:l)
+
+-- | rename every spilled temp and reset the tempmappings, so the next time same temps are encountered,
+--   a new temp will be generated
+replaceTemps ::  MonadNameGen m => X86Instr -> Set Temp -> Spill m X86Instr
+replaceTemps i toReplace = do
+    newInstruction <- foldM go i toReplace
+    tempMappings .= Map.empty
+    return newInstruction
+  where
+      go :: MonadNameGen m => X86Instr -> Temp -> Spill m X86Instr
+      go instr t = do
+        tm <- view tempMappings <$> get
+        case Map.lookup t tm of
+            (Just newTemp) -> return $ renameInstr instr (renameTemp t newTemp) 
+            Nothing        -> return instr
+
+data SpillState = SpillState {
+       _padding      :: Int32
+     , _body         :: [X86Instr]
+     , _comments     :: [X86Comment]
+     , _spilledTemps :: Set Temp
+     , _tempPaddings :: Map Temp Int32  -- which temp is already used and has a memory adress
+     , _tempMappings :: Map Temp Temp   -- which temp is already renamed
+   } deriving (Show, Eq, Ord)
+
+
+type Spill m = StateT SpillState m
+
+padding   :: Lens' SpillState Int32
+padding = lens _padding (\x y -> x { _padding = y })
+
+body   :: Lens' SpillState [X86Instr]
+body = lens _body (\x y -> x { _body = y })
+
+comments   :: Lens' SpillState [X86Comment]
+comments = lens _comments (\x y -> x { _comments = y })
+
+spilledTemps   :: Lens' SpillState (Set Temp)
+spilledTemps = lens _spilledTemps (\x y -> x { _spilledTemps = y })
+
+tempPaddings   :: Lens' SpillState (Map Temp Int32)
+tempPaddings = lens _tempPaddings (\x y -> x { _tempPaddings = y })
+
+tempMappings   :: Lens' SpillState (Map Temp Temp)
+tempMappings = lens _tempMappings (\x y -> x { _tempMappings = y })
+
+
+renameTemp :: Temp -> Temp -> Temp -> Temp
+renameTemp toReplace replacement input
+  | toReplace == input = replacement
+  | otherwise          = input
+
 
 -- |                     i
 instance MachineInstr X86Instr where
@@ -301,36 +465,37 @@ x86Def (CALL _) = [eaxT]
 x86Def x@_                         = [] -- trace ("No temps for this guy: " ++ show x) []
 
 
-
+x86MovT :: X86Instr -> Maybe (Temp, Temp)
 x86MovT (Binary _ (_, Reg t1) (_, Reg t2))
   | (t1 == ebpT) || (t1 == espT) || (t2 == ebpT) || (t2 == espT) = Nothing
-  | otherwise                                            = Just (t1, t2)
-x86MovT _                                                = Nothing
+  | otherwise                                                    = Just (t1, t2)
+x86MovT _                                                        = Nothing
 
+x86AssignT :: X86Instr -> Maybe Temp
 x86AssignT (Unary _  (_, (Reg t))   )  = Just t
 x86AssignT (Binary _ (_, (Reg t1)) _)  = Just t1
 x86AssignT _                           = Nothing
 
-
--- x86Jump (CALL l) = [l]
+x86Jump :: X86Instr -> [Label]
 x86Jump (JMP l)  = [l]
 x86Jump (J _ l)  = [l]
 x86Jump _        = []
 
-
+x86Label :: X86Instr -> Maybe Label
 x86Label (LABEL l) = Just l
 x86Label _         = Nothing
 
-
+x86Rename :: X86Instr -> (Temp -> Temp) -> X86Instr
 x86Rename (Unary i (s, Reg t)) f                 = Unary  i (s,  Reg (f t))
 x86Rename (Unary i (s, Mem m)) f                 = Unary  i (s,  Mem (rMem f m))
 x86Rename (Binary i (s1, Reg t1) (s2, Reg t2)) f = Binary i (s1, Reg (f t1)) (s2, Reg (f t2))
 x86Rename (Binary i (s1, Mem m1) (s2, Mem m2)) f = Binary i (s1, Mem (rMem f m1)) (s2, Mem (rMem f m2))
 x86Rename i _                                    = i
 
+rMem :: (Temp -> Temp) -> EffectiveAddress -> EffectiveAddress
 rMem f (EffectiveAddress (Just t1) (Just (t2, s)) d) = EffectiveAddress (Just (f t1)) (Just ((f t2), s)) d
 
-
+x86FallThrough :: X86Instr -> Bool
 x86FallThrough (RET)   = False
 x86FallThrough (JMP _) = False
 x86FallThrough _       = True
@@ -374,4 +539,17 @@ edx = Reg edxT
 
 edxT :: Temp
 edxT = mkNamedTemp "%edx"
+
+edi :: Operand
+edi = Reg ediT
+
+ediT :: Temp
+ediT = mkNamedTemp "%edi"
+
+
+esi :: Operand
+esi = Reg esiT
+
+esiT :: Temp
+esiT = mkNamedTemp "%esi"
 

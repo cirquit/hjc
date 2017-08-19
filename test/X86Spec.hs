@@ -90,6 +90,7 @@ testConfig = Config
     , showTime'     = True
     , compileToCmm  = True
     , compileToX86  = True
+    , compileToAllocatedX86 = False
     , canonizeCmm   = True
     , createCFGraph = False 
     , javaOutputDir = "output"

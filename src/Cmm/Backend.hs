@@ -25,7 +25,7 @@ class (MachineInstr i) =>
     machineFunctionRename :: f -> (Temp -> Temp) -> f
     machineFunctionSpill
         :: MonadNameGen m
-        => f -> [Temp] -> m f
+        => f -> Set Temp -> m f
 
 class (MachineInstr i, MachineFunction f i, Show p) =>
       MachinePrg p f i  | p -> f i where

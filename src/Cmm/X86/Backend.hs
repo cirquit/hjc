@@ -6,7 +6,6 @@ module Cmm.X86.Backend where
 
 import Prelude                              hiding  (or, and)
 
-import qualified Data.Map                   as Map
 import           Data.Int
 import           Data.Bool                  as B
 import           Data.List                          (genericLength)
@@ -17,6 +16,12 @@ import           Control.Monad.Trans.Class          (lift)
 import           Control.Monad.IO.Class
 import           Control.Lens                       hiding ((#))
 import           Control.Monad                      (when, zipWithM_)
+
+import           Data.Set               (Set)
+import qualified Data.Set        as Set
+import           Data.Map               (Map)
+import qualified Data.Map.Strict as Map
+
 
 import           Cmm.CAST                   as CA
 import           Cmm.LabelGenerator                 ( Temp, Label, mkLabel, mkNamedTemp, MonadNameGen(..)
@@ -34,7 +39,10 @@ import           Cmm.ControlFlowGraph
 -- | Main function
 --
 generatex86 :: MiniJava -> IO X86Prog
-generatex86 ast = runNameGenT $ ast2ccmmGen ast >>= \cmm -> codeGen X86CodeGen cmm
+generatex86 ast = runNameGenT $ generatex86Gen ast
+
+generatex86Gen :: MiniJava -> NameGenT IO X86Prog
+generatex86Gen ast = ast2ccmmGen ast >>= \cmm -> codeGen X86CodeGen cmm
 
 cmm2x86prog :: (MonadNameGen m, MonadIO m) => Cmm -> X86 m X86Prog
 cmm2x86prog cmm = X86Prog <$> mapM cmmMethod2x86 cmm
@@ -47,6 +55,7 @@ cmmMethod2x86 method = do
     return $ X86Func { x86functionName = cmmMethodName method
                      , x86body         = fullCore
                      , x86comments     = fullComments
+                     , x86spilledCount = 0
                      }
 
   where
@@ -255,82 +264,82 @@ instance CodeGen X86CodeGen X86Prog X86Func X86Instr where
             }
 
 --  allRegisters :: c -> Set Temp
-    allRegisters c = undefined
+    allRegisters _ = Set.fromList [espT, ebpT, eaxT, ecxT, edxT, esiT, ediT]
 
 --  generalPurposeRegisters :: c -> Set Temp
-    generalPurposeRegisters c = undefined
+    generalPurposeRegisters _ = Set.fromList [espT, ebpT, eaxT, ecxT, edxT, esiT, ediT]
 
 
 
-exampleProg :: X86Prog
-exampleProg = X86Prog $ [X86Func { x86functionName = "test"
-                                 , x86body         = body
-                                 , x86comments     = []
-                                 }]
+-- exampleProg :: X86Func
+-- exampleProg = X86Func { x86functionName = "test"
+--                       , x86body         = body
+--                       , x86comments     = []
+--                       }
 
-    where
-        body :: [X86Instr]
-        body = 
-          [
-             Binary MOV (Nothing, aOp) (Nothing, (XI.Imm 0))
-          ,  Binary ADD (Nothing, aOp) (Nothing, (XI.Imm 1))
-          ,  Binary MOV (Nothing, bOp) (Nothing, aOp)
+--     where
+--         body :: [X86Instr]
+--         body = 
+--           [
+--              Binary MOV (Nothing, aOp) (Nothing, (XI.Imm 0))
+--           ,  Binary ADD (Nothing, aOp) (Nothing, (XI.Imm 1))
+--           ,  Binary MOV (Nothing, bOp) (Nothing, aOp)
 
-          ,  Binary MOV (Nothing, fOp) (Nothing, cOp)
-          ,  Binary ADD (Nothing, fOp) (Nothing, bOp)
-          ,  Binary MOV (Nothing, cOp) (Nothing, fOp)
+--           ,  Binary MOV (Nothing, fOp) (Nothing, cOp)
+--           ,  Binary ADD (Nothing, fOp) (Nothing, bOp)
+--           ,  Binary MOV (Nothing, cOp) (Nothing, fOp)
           
-          ,  Binary MOV (Nothing, hOp) (Nothing, bOp)
-          ,  Binary ADD (Nothing, hOp) (Nothing, (XI.Imm 2))
+--           ,  Binary MOV (Nothing, hOp) (Nothing, bOp)
+--           ,  Binary ADD (Nothing, hOp) (Nothing, (XI.Imm 2))
           
-          ,  Binary MOV (Nothing, aOp) (Nothing, hOp)
-          ,  RET
-          ]
+--           ,  Binary MOV (Nothing, aOp) (Nothing, hOp)
+--           ,  RET
+--           ]
 
 
 
 
 
-aOp :: Operand
-aOp = Reg $ mkNamedTemp "a"
+-- aOp :: Operand
+-- aOp = Reg $ mkNamedTemp "a"
 
-bOp :: Operand
-bOp = Reg $ mkNamedTemp "b"
+-- bOp :: Operand
+-- bOp = Reg $ mkNamedTemp "b"
 
-cOp :: Operand
-cOp = Reg $ mkNamedTemp "c"
+-- cOp :: Operand
+-- cOp = Reg $ mkNamedTemp "c"
 
-dOp :: Operand
-dOp = Reg $ mkNamedTemp "d"
+-- dOp :: Operand
+-- dOp = Reg $ mkNamedTemp "d"
 
-eOp :: Operand
-eOp = Reg $ mkNamedTemp "e"
+-- eOp :: Operand
+-- eOp = Reg $ mkNamedTemp "e"
 
-fOp :: Operand
-fOp = Reg $ mkNamedTemp "f"
+-- fOp :: Operand
+-- fOp = Reg $ mkNamedTemp "f"
 
-gOp :: Operand
-gOp = Reg $ mkNamedTemp "g"
+-- gOp :: Operand
+-- gOp = Reg $ mkNamedTemp "g"
 
-hOp :: Operand
-hOp = Reg $ mkNamedTemp "h"
+-- hOp :: Operand
+-- hOp = Reg $ mkNamedTemp "h"
 
-iOp :: Operand
-iOp = Reg $ mkNamedTemp "i"
+-- iOp :: Operand
+-- iOp = Reg $ mkNamedTemp "i"
 
-jOp :: Operand
-jOp = Reg $ mkNamedTemp "j"
+-- jOp :: Operand
+-- jOp = Reg $ mkNamedTemp "j"
 
-kOp :: Operand
-kOp = Reg $ mkNamedTemp "k"
+-- kOp :: Operand
+-- kOp = Reg $ mkNamedTemp "k"
 
-lOp :: Operand
-lOp = Reg $ mkNamedTemp "l"
+-- lOp :: Operand
+-- lOp = Reg $ mkNamedTemp "l"
 
 
--- TODO - remove
-createExampleDot :: IO ()
-createExampleDot = do
-    let gs :: [DirectedGraph X86Instr]
-        gs = createControlFlowGraph exampleProg
-    writeFile "exampleProg.dot" (concatMap show gs)
+-- -- TODO - remove
+-- createExampleDot :: IO ()
+-- createExampleDot = do
+--     let gs :: DirectedGraph X86Instr
+--         gs = createControlFlowGraph exampleProg
+--     writeFile "exampleProg.dot" (show gs)

@@ -20,15 +20,13 @@ import           Data.List              (foldl', find)
 import           Debug.Trace            (trace)
 
 
-createControlFlowGraph :: (MachinePrg p f i, Ord i, Show i) => p -> [DirectedGraph i]
-createControlFlowGraph p = map (addFunctionToGraph emptyGraph) (machinePrgFunctions p)
+-- createControlFlowGraph :: (MachinePrg p f i, Ord i, Show i) => p -> [DirectedGraph i]
+-- createControlFlowGraph p = map (addFunctionToGraph emptyGraph) (machinePrgFunctions p)
 
-addFunctionToGraph :: (MachineFunction f i, Ord i, Show i) => DirectedGraph i-> f -> DirectedGraph i
-addFunctionToGraph g f = addInstructionsToGraph g body body
+createControlFlowGraph :: (MachineFunction f i, Ord i, Show i) => f -> DirectedGraph i
+createControlFlowGraph f = addInstructionsToGraph emptyGraph body body
     where
         body = machineFunctionBody f
-   -- activityAnalysis g1 (last (machineFunctionBody f))
-   --trace (show $ activityAnalysis g1 (last (machineFunctionBody f))) g1
 
 -- | creates a directed graph of the instructions and by connecting
 --   subsequent instructions and the labels if it is a jump

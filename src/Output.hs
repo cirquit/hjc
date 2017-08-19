@@ -26,6 +26,7 @@ import           Cmm.ActivityAnalysis                (activityAnalysis)
 import           Cmm.InterferenceGraph               (createInterferenceGraph)
 
 import           Cmm.X86.Backend                     (generatex86)
+import           Cmm.RegisterAllocation              (generateAllocatedx86)
 
 data OutputInfo = OutputInfo {
     fileName    :: String
@@ -176,6 +177,16 @@ writeX86Output (OutputInfo inputName _ _ (Just ast) _ _) conf = when (compileToX
     putChunk $ (chunk "Written: ") & fore green
     putChunk $ (chunk outputName) <> (chunk "\n") & bold
 
+writeAllocatedX86Output ::  OutputInfo -> Config -> IO ()
+writeAllocatedX86Output (OutputInfo inputName _ _ (Just ast) _ _) conf = when (compileToAllocatedX86 conf) $ do
+    let _ : name : _ = reverse <$> (LS.splitOneOf "./" $ reverse inputName)
+        outputName = (x86OutputDir conf) </> (name ++ "-allocated.s")
+    result <- generateAllocatedx86 ast 
+    writeFile outputName (show result)
+    putChunk $ (chunk ">> ")
+    putChunk $ (chunk "Written: ") & fore green
+    putChunk $ (chunk outputName) <> (chunk "\n") & bold
+
 writeCFGraphOutput :: OutputInfo -> Config -> IO ()
 writeCFGraphOutput (OutputInfo inputName _ _ (Just ast) _ _) conf = when (createCFGraph conf) $ do
     let _ : name : _ = reverse <$> (LS.splitOneOf "./" $ reverse inputName)
@@ -183,7 +194,7 @@ writeCFGraphOutput (OutputInfo inputName _ _ (Just ast) _ _) conf = when (create
     result <- generatex86 ast
     let -- !cfgraph = createControlFlowGraph result
         -- !activity = map activityAnalysis cfgraph
-        !ifgraph  = createInterferenceGraph result
+        !ifgraph  = map createInterferenceGraph (x86functions result)
     writeFile outputName (concatMap show ifgraph)
     putChunk $ (chunk ">> ")
     putChunk $ (chunk "Written: ") & fore green

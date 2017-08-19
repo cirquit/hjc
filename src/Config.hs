@@ -20,6 +20,7 @@ data Config = Config {
   , canonizeCmm   :: Bool
   , compileToCmm  :: Bool
   , compileToX86  :: Bool
+  , compileToAllocatedX86 :: Bool
   , createCFGraph :: Bool
   , javaOutputDir :: FilePath
   , cmmOutputDir  :: FilePath
@@ -37,6 +38,7 @@ defaultConfig = Config {
   , canonizeCmm   = False
   , compileToCmm  = False
   , compileToX86  = False
+  , compileToAllocatedX86 = False
   , createCFGraph = False
   , javaOutputDir = "output"
   , cmmOutputDir  = "cmm-output"
