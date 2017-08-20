@@ -9,7 +9,8 @@ import           Data.Maybe          (fromJust)
 import           Data.Map            (Map) 
 import qualified Data.Map as Map
 import           Data.Set            (Set) 
-import qualified Data.Set as Set 
+import qualified Data.Set as Set
+import           Data.List           (foldl')
 import           Debug.Trace         (trace)
 
 import           Control.Monad.Trans.State
@@ -219,6 +220,18 @@ instance MachineFunction X86Func X86Instr where
 
 --  machineFunctionRename :: f -> (Temp -> Temp) -> f
     machineFunctionRename f replaceTemp = f { x86body = map (flip renameInstr replaceTemp) (x86body f) }
+
+--  machineFunctionRenameByMap :: f -> Map Temp Temp -> f
+    machineFunctionRenameByMap f tempMapping = do
+        let body = x86body f
+
+            createMappings :: [(Temp -> Temp)]
+            createMappings = map (\(k, v) -> renameTemp k v) $ Map.toAscList tempMapping
+
+            newBody :: [X86Instr]
+            newBody = map (\i -> foldl' renameInstr i createMappings) body
+
+        f { x86body = newBody }
 
 --  machineFunctionSpill :: MonadNameGen m => f -> Set Temp -> m f
     machineFunctionSpill f st = do
