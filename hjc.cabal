@@ -34,10 +34,11 @@ library
                      , Cmm.ASTToCmm
                      , Cmm.Core
                      , Cmm.Canon
-                     , Cmm.I386Instr
                      , Cmm.Backend
                      , Cmm.X86.Backend
                      , Cmm.X86.Core
+                     , Cmm.X86.InstrCore
+                     , Cmm.X86.Spilling
                      , Cmm.DirectedGraph
                      , Cmm.ControlFlowGraph
                      , Cmm.ActivityAnalysis

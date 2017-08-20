@@ -19,7 +19,7 @@ import           Control.Lens               hiding ((#))
 import           Control.Monad              (when, zipWithM_, filterM, mapM)
 
 import           AST                        (MiniJava())
-import           Cmm.I386Instr          -- (X86Prog(), X86CodeGen())
+import           Cmm.X86.InstrCore          -- (X86Prog(), X86CodeGen())
 -- import           Cmm.Backend            
 import           Cmm.DirectedGraph
 import           Cmm.InterferenceGraph      (createInterferenceGraph)

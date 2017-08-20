@@ -19,7 +19,7 @@ import           Config
 import           TypeCheck.TCCore                    (TypeScope(), TypeError(..), successful, errors)
 import           Cmm.ASTToCmm                        (ast2cmms, ast2cmm, ast2ccmm, ast2ccmms)
 import           Cmm.Backend
-import           Cmm.I386Instr
+import           Cmm.X86.InstrCore
 import           Cmm.LabelGenerator
 import           Cmm.ControlFlowGraph                (createControlFlowGraph)
 import           Cmm.ActivityAnalysis                (activityAnalysis)

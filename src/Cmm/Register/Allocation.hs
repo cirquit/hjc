@@ -24,7 +24,7 @@ import           Data.Ord                   (comparing)
 
 import           AST                        (MiniJava())
 import           Cmm.X86.Backend            (generatex86Gen)
-import           Cmm.I386Instr              -- (X86Prog(), X86CodeGen())
+import           Cmm.X86.InstrCore
 import           Cmm.DirectedGraph
 import           Cmm.Backend                (MachineInstr(..)
                                            , MachineFunction(..)

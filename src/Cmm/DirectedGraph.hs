@@ -13,7 +13,7 @@ import qualified Data.Map.Strict as Map
 import           Data.List              (foldl')
 import           Debug.Trace            (trace)
 
-import Cmm.I386Instr
+import Cmm.X86.InstrCore
 
 data DirectedGraph a =
    DirectedGraph {

@@ -28,7 +28,8 @@ import           Cmm.LabelGenerator                 ( Temp, Label, mkLabel, mkNa
                                                     , NameGen, runNameGen, NameGenT, runNameGenT
                                                     )
 import           Cmm.Backend
-import           Cmm.I386Instr              as XI
+import           Cmm.X86.InstrCore          as XI
+import           Cmm.X86.Spilling
 import           Cmm.X86.Core
 import           Cmm.ASTToCmm                       (ast2ccmmGen)
 import           AST                                (MiniJava())
@@ -249,12 +250,12 @@ memx86 (MEM exp) = do
         _       -> error $ "X86Backend.cmmExp2x86 - MEM had to dereference an invalid operand: " ++ show op
 
 
--- |                 c         p       f       i        
-instance CodeGen X86CodeGen X86Prog X86Func X86Instr where 
+-- |                 c         p       f       i
+instance CodeGen X86CodeGen X86Prog X86Func X86Instr where
 
---  codeGen :: MonadNameGen m => c -> Cmm -> m p 
+--  codeGen :: MonadNameGen m => c -> Cmm -> m p
     codeGen _ cmm = fst <$> runStateT (cmm2x86prog cmm) state
-        where 
+        where
             state = X86State {
                 _header = []
               , _scale = S4
