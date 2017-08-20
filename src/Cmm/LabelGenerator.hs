@@ -3,7 +3,7 @@
  - Representation of names of temps and labels
  -}
 module Cmm.LabelGenerator (
-  Temp, Label, mkLabel, mkNamedTemp,
+  Temp(..), Label, mkLabel, mkNamedTemp,
   MonadNameGen(..),
   NameGen, runNameGen,
   NameGenT, runNameGenT

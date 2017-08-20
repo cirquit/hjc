@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, BangPatterns #-}
 module Cmm.X86.Spilling where
 
 import           Cmm.LabelGenerator
@@ -45,12 +45,25 @@ instance MachineFunction X86Func X86Instr where
 --  machineFunctionRename :: f -> (Temp -> Temp) -> f
     machineFunctionRename f replaceTemp = f { x86body = map (flip renameInstr replaceTemp) (x86body f) }
 
+--  machineFunctionFilterInstructions :: f -> f
+-- | we filter every instruction with a 'Temp', and 'MOVES' between same Temps
+    machineFunctionFilterInstructions f = do
+        let code     = zip (x86body f) (x86comments f)
+
+            newCode = filter (not . badInstructions) code 
+
+            (newBody, newComments) = unzip newCode
+
+        f { x86body = newBody, x86comments = newComments }
+
 --  machineFunctionRenameByMap :: f -> Map Temp Temp -> f
     machineFunctionRenameByMap f tempMapping = do
         let body = x86body f
 
             createMappings :: [(Temp -> Temp)]
             createMappings = map (\(k, v) -> renameTemp k v) $ Map.toAscList tempMapping
+            -- TODO
+            -- !z = trace ("Tempmappings: \n" ++ concatMap (\x -> show x ++ "\n") (Map.toAscList tempMapping)) 1
 
             newBody :: [X86Instr]
             newBody = map (\i -> foldl' renameInstr i createMappings) body
@@ -72,6 +85,7 @@ instance MachineFunction X86Func X86Instr where
               , _tempPaddings = Map.empty
               , _tempMappings = Map.empty
             }
+
 
 
 spillTemps :: MonadNameGen m => X86Func -> Spill m ()
@@ -302,7 +316,7 @@ x86Def x@_                         = [] -- trace ("No temps for this guy: " ++ s
 
 
 x86MovT :: X86Instr -> Maybe (Temp, Temp)
-x86MovT (Binary _ (_, Reg t1) (_, Reg t2))
+x86MovT (Binary MOV (_, Reg t1) (_, Reg t2))
   | (t1 == ebpT) || (t1 == espT) || (t2 == ebpT) || (t2 == espT) = Nothing
   | otherwise                                                    = Just (t1, t2)
 x86MovT _                                                        = Nothing
@@ -326,12 +340,48 @@ x86Rename (Unary i (s, Reg t)) f                 = Unary  i (s,  Reg (f t))
 x86Rename (Unary i (s, Mem m)) f                 = Unary  i (s,  Mem (rMem f m))
 x86Rename (Binary i (s1, Reg t1) (s2, Reg t2)) f = Binary i (s1, Reg (f t1)) (s2, Reg (f t2))
 x86Rename (Binary i (s1, Mem m1) (s2, Mem m2)) f = Binary i (s1, Mem (rMem f m1)) (s2, Mem (rMem f m2))
+
+x86Rename (Binary i op1@_        (s2, Reg t2)) f = Binary i op1 (s2, Reg (f t2))
+x86Rename (Binary i op1@_        (s2, Mem m2)) f = Binary i op1 (s2, Mem (rMem f m2))
+x86Rename (Binary i (s1, Reg t1) op2@_       ) f = Binary i (s1, Reg (f t1)) op2
+x86Rename (Binary i (s1, Mem m1) op2@_       ) f = Binary i (s1, Mem (rMem f m1)) op2
+
 x86Rename i _                                    = i
 
 rMem :: (Temp -> Temp) -> EffectiveAddress -> EffectiveAddress
-rMem f (EffectiveAddress (Just t1) (Just (t2, s)) d) = EffectiveAddress (Just (f t1)) (Just ((f t2), s)) d
+rMem f (EffectiveAddress (Just t1) is@_ d) = EffectiveAddress (Just (f t1)) is d
 
 x86FallThrough :: X86Instr -> Bool
 x86FallThrough (RET)   = False
 x86FallThrough (JMP _) = False
 x86FallThrough _       = True
+
+usedTemps :: X86Instr -> [Temp]
+usedTemps (Unary  _ (_, Reg t))              = [t]
+usedTemps (Unary  _ (_, Mem m))              = getMemoryTemps m
+usedTemps (Binary _ (_, Reg t1) (_, Reg t2)) = [t1,t2]
+usedTemps (Binary _ (_, Mem m1) (_, Mem m2)) = getMemoryTemps m1 ++ getMemoryTemps m2
+usedTemps (Binary _ _           (_, Reg t))  = [t]
+usedTemps (Binary _ _           (_, Mem m))  = getMemoryTemps m
+usedTemps (Binary _ (_, Reg t) _      )      = [t]
+usedTemps (Binary _ (_, Mem m) _      )      = getMemoryTemps m
+usedTemps i                                  = []
+
+getMemoryTemps :: EffectiveAddress -> [Temp]
+getMemoryTemps (EffectiveAddress (Just t1) _ _) = [t1]
+
+sameBinaryMove :: X86Instr -> Bool
+sameBinaryMove (Binary MOV (_,op1) (_,op2)) = op1 == op2
+sameBinaryMove _ = False
+
+invalidTemp :: X86Instr -> Bool
+invalidTemp i = any areGeneratedTemps temps
+    where temps = usedTemps i
+
+areGeneratedTemps :: Temp -> Bool
+areGeneratedTemps (Temp _) = True
+areGeneratedTemps _        = False
+
+badInstructions :: (X86Instr, X86Comment) -> Bool
+badInstructions (i,_) = sameBinaryMove i || invalidTemp i
+

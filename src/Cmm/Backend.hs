@@ -25,6 +25,7 @@ class (MachineInstr i) =>
     machineFunctionBody :: f -> [i]
     machineFunctionRename :: f -> (Temp -> Temp) -> f
     machineFunctionRenameByMap :: f -> Map Temp Temp -> f
+    machineFunctionFilterInstructions :: f -> f
     machineFunctionSpill
         :: MonadNameGen m
         => f -> Set Temp -> m f

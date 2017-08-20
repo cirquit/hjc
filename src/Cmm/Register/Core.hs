@@ -174,6 +174,18 @@ createTempMapping = do
     go mapping (t, Colored color) = Map.insert t color mapping
     go mapping (t, s@_)           = error $ "Cmm.Register.Core.createTempMapping: Temp " ++ show t ++ " had an invalid state " ++ show s ++ ". It should be Colored"
 
+printDebugMessage str = do 
+    tstates <- view tempStates <$> get
+    ts <- view tempStack <$> get
+
+    liftIO $ putStrLn $ "\nDEBUG - " ++ str ++ "\n"
+    liftIO $ putStrLn $ "!!! Tempstack: !!! "
+    liftIO $ putStrLn $ unlines $ map show ts
+    liftIO $ putStrLn $ "!!! Tempstates: !!!"
+    liftIO $ putStrLn $ unlines $ map show $ Map.toAscList tstates
+
+
+
 -- | monadic set utils
 --
 filterSM :: (Monad m, Ord a) => (a -> m Bool) -> Set a -> m (Set a)
@@ -187,5 +199,5 @@ mapSM_ f s = mapSM f s >> return ()
 
 
 -- none :: [a] -> Bool
-none s = 0 > (Set.size s)
+none s = 0 == (Set.size s)
 

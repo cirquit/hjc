@@ -206,6 +206,13 @@ eax = Reg eaxT
 eaxT :: Temp
 eaxT = mkNamedTemp "%eax"
 
+ebx :: Operand
+ebx = Reg ecxT
+
+ebxT :: Temp
+ebxT = mkNamedTemp "%ebx"
+
+
 -- math register (used for mathematic expressions)
 ecx :: Operand
 ecx = Reg ecxT

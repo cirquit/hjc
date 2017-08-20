@@ -265,7 +265,7 @@ instance CodeGen X86CodeGen X86Prog X86Func X86Instr where
             }
 
 --  allRegisters :: c -> Set Temp
-    allRegisters _ = Set.fromList [espT, ebpT, eaxT, ecxT, edxT, esiT, ediT]
+    allRegisters _ = Set.fromList [espT, ebpT, eaxT, ebxT, ecxT, edxT, esiT, ediT]
 
 --  generalPurposeRegisters :: c -> Set Temp
-    generalPurposeRegisters _ = Set.fromList [espT, ebpT, eaxT, ecxT, edxT, esiT, ediT]
+    generalPurposeRegisters _ = Set.fromList [eaxT, ebxT, ecxT, edxT, esiT, ediT]
