@@ -23,7 +23,7 @@ import           Cmm.LabelGenerator                 ( Temp, Label, mkLabel, mkNa
                                                     , NameGen, runNameGen, NameGenT, runNameGenT
                                                     )
 import           Cmm.Backend
-import           Cmm.I386Instr              as XI
+import           Cmm.X86.InstrCore          as XI
 
 data X86State = X86State 
     {   _header :: String

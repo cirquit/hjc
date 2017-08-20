@@ -3,7 +3,7 @@
 module Cmm.RegisterAllocation(
      allocateAllRegistersGen
    , generateAllocatedx86
-    ) where 
+    ) where
 
 import           Data.Set               (Set)
 import qualified Data.Set        as Set
@@ -19,13 +19,13 @@ import           Data.Ord               (comparing)
 
 import           AST                    (MiniJava())
 import           Cmm.X86.Backend        (generatex86Gen)
-import           Cmm.I386Instr          -- (X86Prog(), X86CodeGen())
-import           Cmm.Backend            
+import           Cmm.X86.InstrCore   -- (X86Prog(), X86CodeGen())
+import           Cmm.Backend
 import           Cmm.DirectedGraph
 import           Cmm.Backend            (MachineInstr(..)
                                        , MachineFunction(..)
                                        , MachinePrg(..))
-import           Cmm.LabelGenerator     
+import           Cmm.LabelGenerator
 
 import           Cmm.ControlFlowGraph   (createControlFlowGraph)
 import           Cmm.ActivityAnalysis   (activityAnalysis, ActivityStorage(..))
@@ -44,7 +44,6 @@ generateAllocatedx86 ast = runNameGenT $ generatex86Gen ast >>= go c
 allocateAllRegistersGen :: (CodeGen c p f i, Ord i, Show i) => c -> p -> NameGenT IO p
 allocateAllRegistersGen c prog = do
     functions <- mapM (allocateRegisters c) (machinePrgFunctions prog)
-    liftIO $ putStrLn "HELLOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO!!!!!!!!!!!!!!!!!!"
     return $ replaceFunctions prog functions
 
 -- | approximates the graph coloring problem, spills the temps and "should" return a coloringPassnable function
@@ -121,18 +120,18 @@ findCurrentMaxChildrenNode (ts, io) ig = do
 select :: (Map Temp State, [Temp]) -> DirectedGraph Temp -> Set Temp -> (Map Temp State, [Temp])
 select (ts,io) ig colors = do
     let (mt, ts', io') = getFromStack (ts, io)
-                      
+
     case mt of
         Nothing  -> (ts', io')
         (Just t) -> do
             let children = getChildren (ts', io') ig t
                 possibleColor = getFreeColor (ts', io') children colors
-                  
+
             case possibleColor of
                 Nothing      -> do
                     let (ts'', io'') = setSpilled (ts', io') t
                     select (ts'', io'') ig colors
-                   
+
                 (Just color) -> do
                     let ts'' = Map.insert t color ts'
                     select (ts'', io') ig colors
@@ -140,7 +139,7 @@ select (ts,io) ig colors = do
 
 getFreeColor :: (Map Temp State, [Temp]) -> Set Temp -> Set Temp -> Maybe State
 getFreeColor (ts, io) children colors = do
-    let 
+    let
         -- validChildren :: Set Temp
         validChildren = Set.filter (isColored (ts, io)) children
         -- usedColors :: Set Temp
@@ -161,7 +160,7 @@ createDefaultTempStates ig = do
 --
 data State =
       Colored Temp -- register name disguised as Temp
-    | Spilled         
+    | Spilled
     | Clean
     | Stack
   deriving (Ord, Show, Eq)
@@ -195,13 +194,13 @@ onStack ::  (Map Temp State, [Temp]) -> Temp -> Bool
 onStack (ts,io) t = (ts Map.! t) == Stack
 
 getFromStack :: (Map Temp State, [Temp]) -> (Maybe Temp, Map Temp State, [Temp])
-getFromStack  (ts, io) = 
+getFromStack  (ts, io) =
   case take 1 io of
      [t] -> (Just t, Map.insert t Clean ts, drop 1 io)
      _   -> (Nothing, ts, io)
 
 isColored :: (Map Temp State, [Temp]) -> Temp -> Bool
-isColored (ts,io) t = 
+isColored (ts,io) t =
   case (ts Map.! t) of
       (Colored _) -> True
       _           -> False
@@ -224,11 +223,11 @@ deleteSpilledTemps ts spilled = Set.foldl (\m e -> Map.delete e m) ts spilled
 addNewTempStates :: Map Temp State -> DirectedGraph Temp -> Map Temp State
 addNewTempStates ts ig = do
     let -- allNodes :: Set Temp
-        allNodes = nodes ig 
+        allNodes = nodes ig
         -- prevNodes :: Set Temp
         prevNodes = Map.keysSet ts
         -- newTemps :: Set Temp
-        newTemps = Set.filter (`Set.notMember` prevNodes) allNodes 
+        newTemps = Set.filter (`Set.notMember` prevNodes) allNodes
 
     Set.foldl (\m e -> Map.insert e Clean m) ts newTemps
 
