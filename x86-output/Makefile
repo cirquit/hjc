@@ -4,7 +4,7 @@ OUTPUT=testprog
 LIB=lib/runtime.c
 
 all:
-	$(CC) $(CFLAGS) $(file) $(LIB) -o $(OUTPUT) && \
+	$(CC) $(CFLAGS) -o $(OUTPUT) $(FILE) $(LIB) && \
 			echo 'Output of ./testprog:' && ./testprog
 
 clean:
