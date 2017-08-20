@@ -43,7 +43,8 @@ library
                      , Cmm.ControlFlowGraph
                      , Cmm.ActivityAnalysis
                      , Cmm.InterferenceGraph
-                     , Cmm.RegisterAllocation
+                     , Cmm.Register.Core
+                     , Cmm.Register.Allocation
                      , Risc386Clone.IntelMain
                      , Risc386Clone.Frame
                      , Risc386Clone.FrameIntel
@@ -68,6 +69,7 @@ library
                      , extra            >= 1.5
                      , pretty >= 1.0 && < 1.2
                      , array >= 0.5 && < 0.6
+                     , monad-loops  >= 0.4.3 && < 0.5
   default-language:    Haskell2010
 
 executable hjc

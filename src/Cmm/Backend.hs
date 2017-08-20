@@ -6,6 +6,7 @@ import Cmm.CAST (Cmm)
 import Cmm.LabelGenerator (Temp, Label, MonadNameGen)
 import Control.Monad.IO.Class
 import Data.Set (Set)
+import Data.Map (Map)
 
 class MachineInstr i  where
     use :: i -> Set Temp
@@ -23,6 +24,7 @@ class (MachineInstr i) =>
     machineFunctionName :: f -> String
     machineFunctionBody :: f -> [i]
     machineFunctionRename :: f -> (Temp -> Temp) -> f
+    machineFunctionRenameByMap :: f -> Map Temp Temp -> f
     machineFunctionSpill
         :: MonadNameGen m
         => f -> Set Temp -> m f

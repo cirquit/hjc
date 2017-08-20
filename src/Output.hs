@@ -26,7 +26,7 @@ import           Cmm.ActivityAnalysis                (activityAnalysis)
 import           Cmm.InterferenceGraph               (createInterferenceGraph)
 
 import           Cmm.X86.Backend                     (generatex86)
-import           Cmm.RegisterAllocation              (generateAllocatedx86)
+import           Cmm.Register.Allocation             (generateAllocatedx86)
 
 data OutputInfo = OutputInfo {
     fileName    :: String
