@@ -24,6 +24,7 @@ class (MachineInstr i) =>
     machineFunctionName :: f -> String
     machineFunctionBody :: f -> [i]
     machineFunctionRename :: f -> (Temp -> Temp) -> f
+    machineFunctionStackAlloc :: f -> f
     machineFunctionRenameByMap :: f -> Map Temp Temp -> f
     machineFunctionFilterInstructions :: f -> f
     machineFunctionSpill

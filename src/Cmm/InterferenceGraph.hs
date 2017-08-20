@@ -51,32 +51,31 @@ createInterferenceGraph function = do
 
     addTempNodes :: (MachineInstr i, Ord i, Show i) => (DirectedGraph Temp, Map i ActivityStorage) -> i -> (DirectedGraph Temp, Map i ActivityStorage) 
     addTempNodes (graph, activity) i =
-        -- let  !a = trace ("Current instruction: " ++ show i) 1
-        -- in  
+        let  !a = trace ("Current instruction: " ++ show i) 1
+        in  
         case isMoveBetweenTemps i of
             Nothing -> do
                 let defs = Set.toAscList $ def i
                     outs = Set.toAscList $ out_a $ activity Map.! i
                     edges = concatMap (\d -> zip (repeat d) (filter (/= d) outs)) defs
 
-                    -- !b = trace ("Edges: " ++ show edges) 1 
+                    !b = trace ("1. Edges: " ++ show edges) 1 
+
     
                     g'   = foldl' addNode graph (defs ++ outs)
-                    g''  = foldl' (\g (x,y) -> addEdge g x y) g' edges
+                    g''  = foldl' addBothEdges g' edges
                 (g'', activity)
             (Just (dst, src))  -> do
                 let outs  = filter (`notElem` [dst,src]) $ Set.toAscList $ out_a $ activity Map.! i
                     edges = zip (repeat dst) outs
-                    -- !b = trace ("Edges: " ++ show edges) 1 
-                    g'    = foldl' (\g (x,y) -> addEdge g x y) graph edges
+                    !b = trace ("2. Edges: " ++ show edges) 1 
+                    g'    = foldl' addBothEdges graph edges
                     -- g''   = addNode g' src
-                    -- g_''  = addNode g'' dst
-                (g', activity)
+                    g''  = addNode g' dst
+                (g'', activity)
 
-
-
-
-
+addBothEdges :: DirectedGraph Temp -> (Temp, Temp) -> DirectedGraph Temp
+addBothEdges g (a, b) = addEdge (addEdge g a b) b a
 
 
 

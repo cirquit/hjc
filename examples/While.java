@@ -5,9 +5,10 @@ class While {
 }
 
 class WhileClass {
+
+    int sum;
+    int i;
     public int run () {
-	int i;
-        int sum;
 
         sum = 0;
         i = 1;

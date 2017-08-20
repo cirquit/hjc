@@ -75,7 +75,7 @@ modifyFunction f = do
     spilled <- getAllSpilled
     case (not . none $ spilled) of
         True -> do
-            liftIO $ putStrLn $ show spilled
+            -- liftIO $ putStrLn $ show spilled
             -- liftIO $ putStrLn "\n\n\n\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n\n\n"
             newFunction <- lift $ machineFunctionSpill f spilled  -- modifying the function with asm
             updateInterferenceGraph newFunction            -- create new interferencegraph
@@ -87,8 +87,10 @@ modifyFunction f = do
             
 insertRegisterColors :: (MonadNameGen m, MonadIO m, MachineFunction f i, Ord i, Show i) => f -> Reg m f
 insertRegisterColors f = do
-    f' <- machineFunctionRenameByMap f <$> createTempMapping
-    return $ machineFunctionFilterInstructions f'
+    (machineFunctionStackAlloc .
+         machineFunctionFilterInstructions .
+         machineFunctionRenameByMap f) <$> createTempMapping
+    
 
 coloringPass :: (MonadNameGen m, MonadIO m) => Reg m ()
 coloringPass = do
@@ -100,7 +102,7 @@ coloringPass = do
 
 simplify :: (MonadNameGen m, MonadIO m) => Reg m ()
 simplify = do
-    printDebugMessage "simplify"
+     -- printDebugMessage "simplify"
     ns <- allNodes
     k  <- Set.size <$> (view colors <$> get)
     lessThanKNodes <- filterSM (((< k) <$>) . getOutDegree) ns
@@ -114,17 +116,19 @@ select  = do
     mtemp <- getFromStack
     case mtemp of
         Nothing  -> do
-            printDebugMessage "select"
+            -- printDebugMessage "select"
             return ()
         (Just t@(NamedTemp color)) -> do
             tempStates %= Map.insert t (Colored t) -- named temps are already colored (this happens because 'ret' uses '%eax' and not a temp)
             select
         (Just temp) -> do
-            children <- getChildren temp
+--            printDebugMessage (show temp)
+            children <- getColoredChildren temp
             mColor   <- getFreeColor children
             case mColor of
                 Nothing      -> setSpilled temp >> select
                 (Just color) -> do
+                    -- liftIO $ putStrLn $ "used color " ++ show color
                     tempStates %= Map.insert temp color
                     select
 
@@ -140,12 +144,13 @@ findCurrentMaxChildrenNode = do
 -- | check which colors are used, pick one if possible
 getFreeColor :: (MonadNameGen m, MonadIO m) => Set Temp -> Reg m (Maybe State)
 getFreeColor children = do
+  --  liftIO $ putStrLn $ "children: " ++ show children
     validChildren <- filterSM isColored children
     usedColors    <- mapSM getColor validChildren
-    liftIO $ putStrLn $ "used colors: " ++ show usedColors
+  --  liftIO $ putStrLn $ "used colors: " ++ show usedColors
     allColors     <- view colors <$> get         
     let possibleColors = Set.difference allColors usedColors
-    liftIO $ putStrLn $ "possible colors: " ++ show possibleColors
+  --  liftIO $ putStrLn $ "possible colors: " ++ show possibleColors
     case none possibleColors of
         True ->  return Nothing
         False -> return . Just . Colored $ 0 `Set.elemAt` possibleColors

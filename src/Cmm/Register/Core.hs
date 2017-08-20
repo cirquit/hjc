@@ -74,6 +74,9 @@ updateInterferenceGraph f = do
 getChildren :: (MonadNameGen m, MonadIO m) => Temp -> Reg m (Set Temp)
 getChildren t = (filterSM isValidChild) =<< successorsM t
 
+getColoredChildren :: (MonadNameGen m, MonadIO m) => Temp -> Reg m (Set Temp)
+getColoredChildren t = (filterSM isColored) =<< successorsM t
+
 successorsM :: (MonadNameGen m, MonadIO m) => Temp -> Reg m (Set Temp)
 successorsM t = (\ig -> successors ig t) <$> (view interferenceGraph <$> get)
 
@@ -153,14 +156,14 @@ getColor t = do
         (Just (Colored c)) -> return c
         s@_                -> error $ "Cmm.RegisterAllocation.getColor: Temp " ++ show t ++ " does not have the state 'Colored', but: " ++ show s
 
--- | isValidChild is only called in the `Cmm.Register.Allocation.simplify` function and every temp  
+-- | isValidChild is only called in the `Cmm.Register.Allocation.simplify` function to caluclate the outDegree
 isValidChild :: (MonadNameGen m, MonadIO m) => Temp -> Reg m Bool
 isValidChild t = do
     ts <- view tempStates <$> get
     case (Map.lookup t ts) of
         (Just Clean      ) -> return True
+        (Just (Colored _)) -> return True
         (Just Stack      ) -> return False
-        (Just (Colored _)) -> return False
         (Just Spilled    ) -> error "Cmm.Register.Core.isValidChild: There should never be any spilled nodes in the 'simplify' function"
         Nothing            -> error $ "Cmm.Register.Core.isValidChild: Could not find node " ++ show t ++ " in tempStates" 
 

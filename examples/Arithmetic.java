@@ -10,7 +10,7 @@ class A {
         System.out.println(1338 - 1);
         System.out.println(7 * 191);
         System.out.println(2674 / 2);
-        System.out.println(3337 % 2000);
+//        System.out.println(3337 % 2000);
         if (2 < 4) { System.out.println(1337); } else { System.out.println(0); }
         if (4 > 2) { System.out.println(1337); } else { System.out.println(0); }
         if (2 <= 4) { System.out.println(1337); } else { System.out.println(0); }

@@ -51,12 +51,12 @@ activityAnalysis graph =
         solvedMap  = repeatUntilSame livelinessMap runUpate
 
         -- debug - TODO
-        -- !z         = trace (
-        --     concatMap (\(instr, (ActivityStorage o i)) -> 
-        --                     printf "%-30s out: %-20s in: %-20s \n"
-        --                         (show instr)
-        --                         (show (Set.toAscList o))
-        --                         (show (Set.toAscList i))) (Map.toAscList solvedMap)) 1
+        !z         = trace (
+            concatMap (\(instr, (ActivityStorage o i)) -> 
+                            printf "%-30s out: %-20s in: %-20s \n"
+                                (show instr)
+                                (show (Set.toAscList o))
+                                (show (Set.toAscList i))) (Map.toAscList solvedMap)) 1
     in solvedMap
 
   where

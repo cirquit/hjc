@@ -56,32 +56,37 @@ cmmMethod2x86 method = do
     return $ X86Func { x86functionName = cmmMethodName method
                      , x86body         = fullCore
                      , x86comments     = fullComments
-                     , x86spilledCount = 0
+                     , x86spilledCount = 3 -- callee-savee register are on stack (ebx, esi, edi)
                      }
-
   where
-
     sizeDir :: Maybe SizeDirective
     sizeDir = Nothing              -- no need for this for without pointer arithmetic in fstart/fend
 
     functionStart :: [X86Instr]
     functionStart = [ Unary  PUSH (sizeDir, ebp)               -- staring new callframe
-                    , Binary MOV  (sizeDir, ebp) (sizeDir,esp) -- moving end of previous callframe to current start 
+                    , Binary MOV  (sizeDir, ebp) (sizeDir,esp) -- moving end of previous callframe to current start
+                    , Unary  PUSH (sizeDir, ebx)               -- callee-save
+                    , Unary  PUSH (sizeDir, esi)               -- callee-save
+                    , Unary  PUSH (sizeDir, edi)               -- callee-save
                     ]
 
     functionStartComments:: [X86Comment]
-    functionStartComments = [comment "function prolog start"
-                            ,comment "---------------   end"]
+    functionStartComments = [comment "function prolog start"]
+             ++ replicate 3 (comment "---------------------")
+                         ++ [comment "---------------   end"]
 
     functionEnd :: [X86Instr]
-    functionEnd = [ Binary MOV (sizeDir, eax) (sizeDir, returnTemp) -- save return value in designated register eax
+    functionEnd = [ Unary  POP (sizeDir, ebx)                       -- callee-save
+                  , Unary  POP (sizeDir, esi)                       -- callee-save
+                  , Unary  POP (sizeDir, edi)                       -- callee-save
+                  , Binary MOV (sizeDir, eax) (sizeDir, returnTemp) -- save return value in designated register eax
                   , Binary MOV (sizeDir, esp) (sizeDir, ebp)        -- set end of frame to start of frame
                   , Unary  POP (sizeDir, ebp)                       -- get the previous start of frame (in ebp)
                   , RET ]                                           -- jump to whatever adress ebp points to
 
     functionEndComments :: [X86Comment]
     functionEndComments = [comment "function epilog start"]
-           ++ replicate 2 (comment "---------------------")
+           ++ replicate 5 (comment "---------------------")
                       ++  [comment "----------------- end"]
 
     returnTemp :: Operand
@@ -214,7 +219,8 @@ binopx86 (BINOP binOp e1 e2) = do
         DIV_C   -> do 
             mov eax op1  # "moving first arg to eax for idiv"
             cdq
-            idiv op2
+            mov ecx op2
+            idiv ecx
             mov op1 eax  # "move idiv result to initial destination"
         _       -> error $ "X86Backend.cmmExp2x86 - binOp " ++ show binOp ++ " is not implemented yet"
 

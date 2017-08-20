@@ -45,6 +45,19 @@ instance MachineFunction X86Func X86Instr where
 --  machineFunctionRename :: f -> (Temp -> Temp) -> f
     machineFunctionRename f replaceTemp = f { x86body = map (flip renameInstr replaceTemp) (x86body f) }
 
+--  machineFunctionStackAlloc :: f -> f
+    machineFunctionStackAlloc f = do
+        let spilledCount = x86spilledCount f
+            alloc = Binary SUB (Nothing, esp) (Nothing, Imm (-4 * (spilledCount - 3)))
+            code  = zip (x86body f) (x86comments f)
+
+            -- insert at 3rd position
+            newCode = take 2 code ++ (alloc, comment "allocating stackframe") : drop 2 code
+            (newBody, newComments) = unzip newCode
+
+        f { x86body = newBody, x86comments = newComments }
+
+
 --  machineFunctionFilterInstructions :: f -> f
 -- | we filter every instruction with a 'Temp', and 'MOVES' between same Temps
     machineFunctionFilterInstructions f = do
@@ -278,7 +291,8 @@ x86Use (Unary  PUSH (_, op)) = addTemp op
 x86Use (Unary  IDIV (_, op)) = addTemp op
 x86Use x@(Unary  _  (_, _))  = error $ "x86Use: didnt define rules for " ++ show x
 
-x86Use x@(Binary MOV  (_, _) (_, op)) = addTemp op -- trace ("Use Mov for: " ++ show x ++ ", with temp " ++ show (addTemp op)) (addTemp op)
+x86Use x@(Binary MOV  (_, (Mem ea)) (_, op)) = getMemoryTemps ea ++ addTemp op -- trace ("Use Mov for: " ++ show x ++ ", with temp " ++ show (addTemp op)) (addTemp op)
+x86Use x@(Binary MOV  (_, _) (_, op)) = addTemp op
 x86Use (Binary LEA  (_, _) (_, op)) = addTemp op
 
 x86Use (Binary ADD  (_, op1) (_, op2)) = addTemp op1 ++ addTemp op2
@@ -316,10 +330,23 @@ x86Def x@_                         = [] -- trace ("No temps for this guy: " ++ s
 
 
 x86MovT :: X86Instr -> Maybe (Temp, Temp)
-x86MovT (Binary MOV (_, Reg t1) (_, Reg t2))
-  | (t1 == ebpT) || (t1 == espT) || (t2 == ebpT) || (t2 == espT) = Nothing
-  | otherwise                                                    = Just (t1, t2)
-x86MovT _                                                        = Nothing
+x86MovT (Binary MOV (_, (Reg t1)) (_, op2)) = do
+    case (getTemp op2) of
+        (Just t2)
+          | (t1 == ebpT) ||
+            (t1 == espT) ||
+            (t2 == ebpT) ||
+            (t2 == espT) -> Nothing
+          | otherwise -> Just (t1, t2)
+        _ -> Nothing
+x86MovT _ = Nothing
+
+
+getTemp :: Operand -> Maybe Temp
+getTemp (Reg t)                               = Just t
+getTemp (Mem (EffectiveAddress (Just t) _ _)) = Just t
+getTemp _                                     = Nothing
+
 
 x86AssignT :: X86Instr -> Maybe Temp
 x86AssignT (Unary _  (_, (Reg t))   )  = Just t
@@ -341,6 +368,9 @@ x86Rename (Unary i (s, Mem m)) f                 = Unary  i (s,  Mem (rMem f m))
 x86Rename (Binary i (s1, Reg t1) (s2, Reg t2)) f = Binary i (s1, Reg (f t1)) (s2, Reg (f t2))
 x86Rename (Binary i (s1, Mem m1) (s2, Mem m2)) f = Binary i (s1, Mem (rMem f m1)) (s2, Mem (rMem f m2))
 
+x86Rename (Binary i (s1, Reg t1) (s2, Mem m2)) f = Binary i (s1, Reg (f t1)) (s2, Mem (rMem f m2))
+x86Rename (Binary i (s1, Mem m1) (s2, Reg t2)) f = Binary i (s1, Mem (rMem f m1)) (s2, Reg (f t2))
+
 x86Rename (Binary i op1@_        (s2, Reg t2)) f = Binary i op1 (s2, Reg (f t2))
 x86Rename (Binary i op1@_        (s2, Mem m2)) f = Binary i op1 (s2, Mem (rMem f m2))
 x86Rename (Binary i (s1, Reg t1) op2@_       ) f = Binary i (s1, Reg (f t1)) op2
@@ -361,10 +391,16 @@ usedTemps (Unary  _ (_, Reg t))              = [t]
 usedTemps (Unary  _ (_, Mem m))              = getMemoryTemps m
 usedTemps (Binary _ (_, Reg t1) (_, Reg t2)) = [t1,t2]
 usedTemps (Binary _ (_, Mem m1) (_, Mem m2)) = getMemoryTemps m1 ++ getMemoryTemps m2
-usedTemps (Binary _ _           (_, Reg t))  = [t]
-usedTemps (Binary _ _           (_, Mem m))  = getMemoryTemps m
-usedTemps (Binary _ (_, Reg t) _      )      = [t]
-usedTemps (Binary _ (_, Mem m) _      )      = getMemoryTemps m
+
+usedTemps (Binary _ (_, Reg t1) (_, Mem m1)) = [t1] ++ getMemoryTemps m1
+usedTemps (Binary _ (_, Mem m1) (_, Reg t1)) = getMemoryTemps m1 ++ [t1]
+
+usedTemps (Binary _ (_, Reg t)  _) = [t]
+usedTemps (Binary _ (_, Mem m)  _) = getMemoryTemps m
+
+usedTemps (Binary _ _  (_, Reg t)) = [t]
+usedTemps (Binary _ _  (_, Mem m)) = getMemoryTemps m
+
 usedTemps i                                  = []
 
 getMemoryTemps :: EffectiveAddress -> [Temp]
@@ -384,4 +420,3 @@ areGeneratedTemps _        = False
 
 badInstructions :: (X86Instr, X86Comment) -> Bool
 badInstructions (i,_) = sameBinaryMove i || invalidTemp i
-
