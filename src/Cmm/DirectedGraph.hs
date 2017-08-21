@@ -98,6 +98,7 @@ showAlphaNum = concatMap readable . filter (/= '%') . show
         readable '+' = "_"
         readable '[' = "×"
         readable ']' = "×"
-        readable '(' = ""
-        readable ')' = ""
+        readable '(' = "_"
+        readable ')' = "_"
+        readable '$' = ""
         readable c   = [c]

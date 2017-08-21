@@ -14,7 +14,7 @@ class AA {
         arr  = new int[2];
 
         arr[0] = 5;
-        arr[1] = 10;
+        // arr[1] = 10;
         return arr[0];
  
     }

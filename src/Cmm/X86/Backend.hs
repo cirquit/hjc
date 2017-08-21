@@ -218,8 +218,8 @@ binopx86 (BINOP binOp e1 e2) = do
         XOR_C   -> xor  op1 op2 
         DIV_C   -> do 
             mov eax op1  # "moving first arg to eax for idiv"
-            cdq
             mov ecx op2
+            cdq
             idiv ecx
             mov op1 eax  # "move idiv result to initial destination"
         _       -> error $ "X86Backend.cmmExp2x86 - binOp " ++ show binOp ++ " is not implemented yet"

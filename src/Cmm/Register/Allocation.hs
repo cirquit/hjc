@@ -88,7 +88,7 @@ modifyFunction f = do
 insertRegisterColors :: (MonadNameGen m, MonadIO m, MachineFunction f i, Ord i, Show i) => f -> Reg m f
 insertRegisterColors f = do
     (machineFunctionStackAlloc .
-         machineFunctionFilterInstructions .
+        -- machineFunctionFilterInstructions .
          machineFunctionRenameByMap f) <$> createTempMapping
     
 
@@ -138,7 +138,7 @@ findCurrentMaxChildrenNode = do
     allNodes           <- nodes <$> (view interferenceGraph <$> get)
     allAccessableNodes <- filterSM (\n -> not <$> (onStack n)) allNodes
     case (not . none $ allAccessableNodes) of
-        True ->  maximumOnM getOutDegree (Set.toAscList allAccessableNodes)
+        True ->  maximumOnM getOutDegree (Set.toList allAccessableNodes)
         False -> return Nothing
 
 -- | check which colors are used, pick one if possible

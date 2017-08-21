@@ -1,7 +1,8 @@
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE BangPatterns, PatternSynonyms, ExplicitNamespaces #-}
 
 module Cmm.ControlFlowGraph (
     createControlFlowGraph
+  , type Unique
     ) where 
 
 import           Cmm.DirectedGraph
@@ -19,40 +20,40 @@ import           Text.Printf            (printf)
 import           Data.List              (foldl', find)
 import           Debug.Trace            (trace)
 
+type Unique i = (Int, i)
 
--- createControlFlowGraph :: (MachinePrg p f i, Ord i, Show i) => p -> [DirectedGraph i]
--- createControlFlowGraph p = map (addFunctionToGraph emptyGraph) (machinePrgFunctions p)
-
-createControlFlowGraph :: (MachineFunction f i, Ord i, Show i) => f -> DirectedGraph i
+-- zipping instructions with their line number to created unique ids in order to allow same instructions to 
+-- have different activities
+createControlFlowGraph :: (MachineFunction f i, Ord i, Show i) => f -> DirectedGraph (Unique i)
 createControlFlowGraph f = addInstructionsToGraph emptyGraph body body
     where
-        body = machineFunctionBody f
+        body = zip [1..] (machineFunctionBody f)
 
 -- | creates a directed graph of the instructions and by connecting
 --   subsequent instructions and the labels if it is a jump
 
 -- TODO refactor this
-addInstructionsToGraph :: (MachineInstr i, Ord i, Show i) => DirectedGraph i -> [i] -> [i] -> DirectedGraph i
-addInstructionsToGraph g []     imm = g
-addInstructionsToGraph g (i:is) imm = do
+addInstructionsToGraph :: (MachineInstr i, Ord i, Show i) => DirectedGraph (Unique i) -> [(Unique i)] -> [(Unique i)] -> DirectedGraph (Unique i)
+addInstructionsToGraph g []         imm = g
+addInstructionsToGraph g ((n,i):is) imm = do
 
-    let g1 = addNode g i
+    let g1 = addNode g (n,i)
 
     case (jumps i) of
         [l] -> do
-            let (Just labelInstr) = find (\x -> (maybe "" id (isLabel x)) == l ) imm
-                g2 = addEdge g1 i labelInstr
-            case (take 1 is) of
-                (j:_) -> do
-                    let g3 = addEdge g2 i j
+            let (Just (lineNum, labelInstr)) = find (\(_, x) -> (maybe "" id (isLabel x)) == l ) imm
+                g2 = addEdge g1 (n,i) (lineNum, labelInstr)
+            case ((isFallThrough i), (take 1 is)) of
+                (True, ((m,j):_)) -> do
+                    let g3 = addEdge g2 (n,i) (m,j)
                     addInstructionsToGraph g3 is imm
-                []  -> do
+                (False, _)  -> do
                     addInstructionsToGraph g2 is imm
 
         _   -> do
-            case (take 1 is) of
-                (j:_) -> do
-                    let g2 = addEdge g1 i j 
+            case ((isFallThrough i), take 1 is) of
+                (True, ((m,j):_)) -> do
+                    let g2 = addEdge g1 (n,i) (m,j) 
                     addInstructionsToGraph g2 is imm
-                []  -> do
+                (False, _)  -> do
                     addInstructionsToGraph g1 is imm

@@ -114,8 +114,8 @@ spillTemps f = go (x86body f) (x86comments f)
                 defd :: Set Temp
                 defd = Set.intersection (def i) st
 
-            usedInstructions   <- mapM genUsedInstructions $ Set.toAscList used
-            defdInstructions   <- mapM genDefsInstructions $ Set.toAscList defd
+            usedInstructions   <- mapM genUsedInstructions $ Set.toList used
+            defdInstructions   <- mapM genDefsInstructions $ Set.toList defd
             renamedInstruction <- replaceTemps i (used `Set.union` defd)
 
             mapM_ addInstructon usedInstructions
@@ -246,10 +246,10 @@ renameTemp toReplace replacement input
 instance MachineInstr X86Instr where
 
 --  use  :: i -> Set Temp
-    use i                = Set.fromAscList $ x86Use i
+    use i                = Set.fromList $ x86Use i
 
 --  def  :: i -> Set Temp
-    def i                = Set.fromAscList $ x86Def i
+    def i                = Set.fromList $ x86Def i
 
 --  isMoveBetweenTemps :: i -> Maybe (Temp, Temp)
     isMoveBetweenTemps i = x86MovT i
@@ -257,7 +257,7 @@ instance MachineInstr X86Instr where
 --  isAssignmentToTemp :: i -> Maybe Temp
     isAssignmentToTemp i = x86AssignT i
 
---  jumps :: i -> [Label]
+--   :: i -> [Label]
     jumps i              = x86Jump i
 
 --  isFallThrough :: i -> Bool

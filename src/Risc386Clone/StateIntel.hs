@@ -435,7 +435,8 @@ regLookup :: (Monad m) => Reg -> RegFile -> m Val
 regLookup (Fixed r) rf =
   case Map.lookup r (regs rf) of
      Just x -> return x
-     Nothing -> fail ("register " ++ show r ++ " is dirty, has possibly undefined value")
+     Nothing -> return $ I 0 -- added default value for undefined registers (used to fix callee-save register at the start of the function)  
+  -- fail ("register " ++ show r ++ " is dirty, has possibly undefined value")
 regLookup (Flex t)  rf =
   case Map.lookup t (temps rf) of
      Just x -> return x

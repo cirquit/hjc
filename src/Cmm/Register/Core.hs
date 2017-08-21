@@ -62,7 +62,7 @@ defaultTempState = Clean
 
 createDefaultTempStates :: DirectedGraph Temp -> Map Temp State
 createDefaultTempStates ig = do
-    let ns = Set.toAscList (nodes ig)
+    let ns = Set.toList (nodes ig)
     foldl' (\g n -> Map.insert n defaultTempState g) Map.empty ns
 
 -- | Reg monading utils
@@ -111,7 +111,7 @@ getAllSpilled :: (MonadNameGen m, MonadIO m) => Reg m (Set Temp)
 getAllSpilled = tuplesToSet . filter isSpilled . Map.toAscList <$> (view tempStates <$> get)
     where 
         tuplesToSet :: (Ord k) => [(k,v)] -> Set k
-        tuplesToSet = Set.fromAscList . map fst
+        tuplesToSet = Set.fromList . map fst
 
         isSpilled :: (Temp, State) -> Bool
         isSpilled (t,s) = s == Spilled
@@ -192,10 +192,10 @@ printDebugMessage str = do
 -- | monadic set utils
 --
 filterSM :: (Monad m, Ord a) => (a -> m Bool) -> Set a -> m (Set a)
-filterSM f s = Set.fromList <$> (filterM f $ Set.toAscList s)
+filterSM f s = Set.fromList <$> (filterM f $ Set.toList s)
 
 mapSM :: (Monad m, Ord a, Ord b) => (a -> m b) -> Set a -> m (Set b)
-mapSM f s = Set.fromList <$> (mapM f (Set.toAscList s))
+mapSM f s = Set.fromList <$> (mapM f (Set.toList s))
 
 mapSM_ :: (Monad m, Ord a, Ord b) => (a -> m b) -> Set a -> m ()
 mapSM_ f s = mapSM f s >> return ()

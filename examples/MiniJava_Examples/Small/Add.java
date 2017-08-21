@@ -13,7 +13,6 @@ class AddM {
     public int add(int i){
         int x = 10;
         x = x + i;
-        y = 21;
         return x - y;
     }
 

@@ -10,7 +10,7 @@ import           Cmm.Backend            (MachineInstr(..)
                                        , MachinePrg(..))
 import           Cmm.LabelGenerator     (Temp())
 
-import           Cmm.ControlFlowGraph   (createControlFlowGraph)
+import           Cmm.ControlFlowGraph   (createControlFlowGraph, Unique(..))
 import           Cmm.ActivityAnalysis   (activityAnalysis, ActivityStorage(..))
 
 import           Data.Set               (Set)
@@ -31,44 +31,47 @@ createInterferenceGraph ::
   => f
   -> DirectedGraph Temp
 createInterferenceGraph function = do
-    let -- cfgraph :: DirectedGraph i
+    let -- cfgraph      :: DirectedGraph (Unique i)
         cfgraph = createControlFlowGraph function
-        -- activity :: Map i ActivityStorage
+        -- activity     :: Map (Unique i) ActivityStorage
         activity = activityAnalysis cfgraph
-        -- instructions :: Set i
-        instructions = nodes cfgraph
-       -- !z = trace (concatMap (\x -> show x ++ "\n") instructions) 1
-        -- states :: (Map i ActivityStorage, i)
+        -- instructions :: Set (Unique i)
+        instructions =  nodes cfgraph
+        -- states       :: (Map (Unique i) ActivityStorage, Set (Unique i))
         states = (activity, instructions)
 
+       -- !z = trace (concatMap (\x -> show x ++ "\n") instructions) 1
     singleInterferenceGraph states
 
   where
 
-    singleInterferenceGraph :: (MachineInstr i, Ord i, Show i) => (Map i ActivityStorage, Set i) -> DirectedGraph Temp
+    singleInterferenceGraph :: (MachineInstr i, Ord i, Show i)
+         => (Map (Unique i) ActivityStorage, Set (Unique i))
+         -> DirectedGraph Temp
     singleInterferenceGraph (activity, instructions) = 
-        fst $ foldl' addTempNodes (emptyGraph, activity) (Set.toAscList instructions)  
+        fst $ foldl' addTempNodes (emptyGraph, activity) (Set.toList instructions)
 
-    addTempNodes :: (MachineInstr i, Ord i, Show i) => (DirectedGraph Temp, Map i ActivityStorage) -> i -> (DirectedGraph Temp, Map i ActivityStorage) 
+    addTempNodes :: (MachineInstr i, Ord i, Show i)
+         => (DirectedGraph Temp, Map (Unique i) ActivityStorage)
+         -> (Unique i)
+         -> (DirectedGraph Temp, Map (Unique i) ActivityStorage) 
     addTempNodes (graph, activity) i =
-        let  !a = trace ("Current instruction: " ++ show i) 1
-        in  
-        case isMoveBetweenTemps i of
+        -- let  !a = trace ("Current instruction: " ++ show i) 1
+        -- in  
+        case (isMoveBetweenTemps . snd) i of
             Nothing -> do
-                let defs = Set.toAscList $ def i
-                    outs = Set.toAscList $ out_a $ activity Map.! i
+                let defs = Set.toList $ (def . snd) i
+                    outs = Set.toList $ out_a $ activity Map.! i
                     edges = concatMap (\d -> zip (repeat d) (filter (/= d) outs)) defs
 
-                    !b = trace ("1. Edges: " ++ show edges) 1 
-
-    
+                    -- !b = trace ("1. Edges: " ++ show edges) 1 
                     g'   = foldl' addNode graph (defs ++ outs)
                     g''  = foldl' addBothEdges g' edges
                 (g'', activity)
             (Just (dst, src))  -> do
-                let outs  = filter (`notElem` [dst,src]) $ Set.toAscList $ out_a $ activity Map.! i
+                let outs  = filter (`notElem` [dst,src]) $ Set.toList $ out_a $ activity Map.! i
                     edges = zip (repeat dst) outs
-                    !b = trace ("2. Edges: " ++ show edges) 1 
+          --          !b = trace ("2. Edges: " ++ show edges) 1 
                     g'    = foldl' addBothEdges graph edges
                     -- g''   = addNode g' src
                     g''  = addNode g' dst
