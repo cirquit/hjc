@@ -48,7 +48,7 @@ instance MachineFunction X86Func X86Instr where
 --  machineFunctionStackAlloc :: f -> f
     machineFunctionStackAlloc f = do
         let spilledCount = x86spilledCount f
-            alloc = Binary SUB (Nothing, esp) (Nothing, Imm (-4 * (spilledCount - 3)))
+            alloc = Binary SUB (Nothing, esp) (Nothing, Imm (4 * (spilledCount - 3)))
             code  = zip (x86body f) (x86comments f)
 
             -- insert at 3rd position
@@ -304,6 +304,7 @@ x86Use (Binary CMP  (_, op1) (_, op2)) = addTemp op1 ++ addTemp op2
 x86Use (Binary IMUL (_, op1) (_, op2)) = addTemp op1 ++ addTemp op2
 x86Use x@(Binary _  (_, _)   (_, _))   = error $ "x86Use: didnt define rules for " ++ show x
 
+x86Use (CALL _)                  = []
 x86Use  RET                      = [eaxT]
 x86Use x@_                       = [] -- trace ("No temps for this guy: " ++ show x) []
 
@@ -325,8 +326,8 @@ x86Def (Binary CMP    (_, _)  (_, _)) = []
 x86Def (Binary IMUL   (_, op) (_, _)) = addTemp op
 x86Def x@(Binary _    (_, op) (_, _)) = error $ "x86Def: didnt define rules for " ++ show x
 
-x86Def (CALL _) = [eaxT]
-x86Def x@_                         = [] -- trace ("No temps for this guy: " ++ show x) []
+x86Def (CALL _)  = [eaxT, ecxT, edxT]
+x86Def x@_       = [] -- trace ("No temps for this guy: " ++ show x) []
 
 
 x86MovT :: X86Instr -> Maybe (Temp, Temp)

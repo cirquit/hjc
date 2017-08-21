@@ -30,7 +30,7 @@ mainConfig = defaultConfig  {
     , showTime'     = True
     , compileToCmm  = True
     , canonizeCmm   = True
-    , compileToX86  = True
+    , compileToX86  = False
     , compileToAllocatedX86 = True
     , createCFGraph = False
     , javaOutputDir = "../output"
@@ -62,7 +62,7 @@ main = do
 -- run single example
 main' :: FilePath -> IO ()
 main' fp = do
-    let inputFiles = [ "../examples/" ++ fp ++ ".java" ]
+    let inputFiles = [ "../examples/MiniJava_Examples/Small/" ++ fp ++ ".java" ]
     mapM_ (evaluateProgram mainConfig) inputFiles 
 
 -- run examples that should fail (logically, not lexically)

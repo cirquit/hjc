@@ -76,10 +76,10 @@ cmmMethod2x86 method = do
                          ++ [comment "---------------   end"]
 
     functionEnd :: [X86Instr]
-    functionEnd = [ Unary  POP (sizeDir, ebx)                       -- callee-save
-                  , Unary  POP (sizeDir, esi)                       -- callee-save
+    functionEnd = [ Binary MOV (sizeDir, eax) (sizeDir, returnTemp) -- save return value in designated register eax
                   , Unary  POP (sizeDir, edi)                       -- callee-save
-                  , Binary MOV (sizeDir, eax) (sizeDir, returnTemp) -- save return value in designated register eax
+                  , Unary  POP (sizeDir, esi)                       -- callee-save
+                  , Unary  POP (sizeDir, ebx)                       -- callee-save
                   , Binary MOV (sizeDir, esp) (sizeDir, ebp)        -- set end of frame to start of frame
                   , Unary  POP (sizeDir, ebp)                       -- get the previous start of frame (in ebp)
                   , RET ]                                           -- jump to whatever adress ebp points to
@@ -150,12 +150,18 @@ callx86 :: (MonadNameGen m, MonadIO m) => CmmExp -> X86 m Operand
 callx86 (CA.CALL (NAME l) args) = do
     ops <- mapM cmmExp2x86 args
     s   <- getScaleAsInt32
+
+    mapM_ (\op -> push op # "caller-save") [eax, ecx, edx]
+
     mapM_ (\(o, i) -> push o  # "pushing " ++ show i ++ " argument") (argList ops)
     call l                    # "result of function call " ++ l ++ " is in eax by convention"
     add  esp (argStackSize s) # "remove arguments from stack"
 
     returnOp <- nextTempO
     mov returnOp eax          # "save result from function call in fresh temp"
+
+    mapM_ (\op -> pop op # "popping caller save in reverse order") [edx, ecx, eax] 
+
     return returnOp
 
   where
@@ -274,4 +280,4 @@ instance CodeGen X86CodeGen X86Prog X86Func X86Instr where
     allRegisters _ = Set.fromList [espT, ebpT, eaxT, ebxT, ecxT, edxT, esiT, ediT]
 
 --  generalPurposeRegisters :: c -> Set Temp
-    generalPurposeRegisters _ = Set.fromList [eaxT, ebxT, ecxT, edxT, esiT, ediT]
+    generalPurposeRegisters _ = Set.fromList [eaxT, ecxT, edxT, ebxT, esiT, ediT]

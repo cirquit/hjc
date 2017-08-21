@@ -53,17 +53,17 @@ activityAnalysis graph
                  -- revGraph :: DirectedGraph (Int, i)
  =
     let revGraph = reverseGraph graph
-        !gen = show $ unsafePerformIO $ getStdGen
-        !x =
-            unsafePerformIO $
-            writeFile
-                ("../cf-graph-output/test-" ++ take 10 gen ++ "-.dot")
-                (show graph)
+        -- !gen = show $ unsafePerformIO $ getStdGen
+        -- !x =
+        --     unsafePerformIO $
+        --     writeFile
+        --         ("../cf-graph-output/test-" ++ take 10 gen ++ "-.dot")
+        --         (show graph)
         lastReturn = (Set.size (nodes revGraph) + 1, ret)
         -- revNodes :: (Ord i) => [(Int, i)]
         revNodes = toList revGraph lastReturn
-        !m = trace (show revGraph) 1
-        !y = trace (show revNodes) 1
+      --  !m = trace (show revGraph) 1
+      --  !y = trace (show revNodes) 1
         -- livelinessMap :: Map (Int, i) ActivityStorage
         livelinessMap =
             Map.fromList $ zip revNodes (repeat emptyActivityStorage)
@@ -72,18 +72,18 @@ activityAnalysis graph
         -- newMap :: Map (Int, i) ActivityStorage
         solvedMap = repeatUntilSame livelinessMap runUpate
         -- debug - TODO
-        !z =
-            trace
-                (concatMap
-                     (\((line, instr), (ActivityStorage o i)) ->
-                           printf
-                               "#%d. %-30s out: %-20s in: %-20s \n"
-                               line
-                               (show instr)
-                               (show (Set.toList o))
-                               (show (Set.toList i)))
-                     (Map.toAscList solvedMap))
-                1
+        -- !z =
+        --     trace
+        --         (concatMap
+        --              (\((line, instr), (ActivityStorage o i)) ->
+        --                    printf
+        --                        "#%d. %-30s out: %-20s in: %-20s \n"
+        --                        line
+        --                        (show instr)
+        --                        (show (Set.toList o))
+        --                        (show (Set.toList i)))
+        --              (Map.toAscList solvedMap))
+        --         1
     in solvedMap
 -- updateActivities :: (Ord i, Show i)
   where
@@ -92,7 +92,7 @@ activityAnalysis graph
      =
         let succs = Set.toList $ successors g i
             -- activity_ins :: [Set i]
-            !x = trace ("looking for - " ++ show i ++ " in " ++ show lm)
+           -- !x = trace ("looking for - " ++ show i ++ " in " ++ show lm)
             activitiy_ins = map (\i -> in_a $ fromJust $ Map.lookup i lm) succs
             -- out_ :: Set Temp
             out_ = Set.unions $ activitiy_ins
@@ -101,20 +101,20 @@ activityAnalysis graph
             --                                               [t1,t5]
             in_ = ((use . snd) i) `Set.union` (out_ `Set.difference` ((def . snd) i))
             -- debug - TODO
-            !z =
-                trace
-                    (unlines
-                         [ "Instruction:       " ++ show i
-                         , "    succs:         " ++ show succs
-                         , "    activitiy_ins: " ++ show activitiy_ins
-                         , "    out/def        " ++
-                           show (out_ `Set.difference` ((def . snd) i))
-                         , "    uses           " ++ show ((use . snd) i)
-                         , "    defs           " ++ show ((def . snd) i)
-                         , "    new_out:       " ++ show out_
-                         , "    new_in:        " ++ show in_
-                         ])
-                    1
+            -- !z =
+            --     trace
+            --         (unlines
+            --              [ "Instruction:       " ++ show i
+            --              , "    succs:         " ++ show succs
+            --              , "    activitiy_ins: " ++ show activitiy_ins
+            --              , "    out/def        " ++
+            --                show (out_ `Set.difference` ((def . snd) i))
+            --              , "    uses           " ++ show ((use . snd) i)
+            --              , "    defs           " ++ show ((def . snd) i)
+            --              , "    new_out:       " ++ show out_
+            --              , "    new_in:        " ++ show in_
+            --              ])
+            --         1
             activitiy =
                 ActivityStorage
                 { out_a = out_
@@ -132,4 +132,4 @@ repeatUntilSame state transform = do
     let newState = transform state
     case state == newState of
         True -> state
-        False -> trace "\n\nNot same!\n\n" (repeatUntilSame newState transform)
+        False -> repeatUntilSame newState transform

@@ -88,7 +88,7 @@ modifyFunction f = do
 insertRegisterColors :: (MonadNameGen m, MonadIO m, MachineFunction f i, Ord i, Show i) => f -> Reg m f
 insertRegisterColors f = do
     (machineFunctionStackAlloc .
-        -- machineFunctionFilterInstructions .
+         machineFunctionFilterInstructions .
          machineFunctionRenameByMap f) <$> createTempMapping
     
 

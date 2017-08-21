@@ -207,7 +207,7 @@ eaxT :: Temp
 eaxT = mkNamedTemp "%eax"
 
 ebx :: Operand
-ebx = Reg ecxT
+ebx = Reg ebxT
 
 ebxT :: Temp
 ebxT = mkNamedTemp "%ebx"
