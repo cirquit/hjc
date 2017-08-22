@@ -108,8 +108,7 @@ spec = do
 
 testConfig :: Config
 testConfig = defaultConfig {
-      parse'        = True
-    , showAst'      = False
+      showAst'      = False
     , showResult'   = False
     , showTime'     = True
     , compileToCmm  = True

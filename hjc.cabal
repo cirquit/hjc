@@ -73,7 +73,7 @@ library
                      , random            >= 1.1
                      , parallel          >= 3.0      && < 4.0
                      , parallel-io       >= 0.3.3    && < 0.4
-
+                     , optparse-applicative >= 0.13.2.0 && < 0.14
 
   default-language:    Haskell2010
 
@@ -88,6 +88,7 @@ executable hjc
                      , directory  >= 1.0.0.0
                      , filepath   >= 1.4.0.0
                      , optparse-generic >= 1.1.5
+                     , optparse-applicative >= 0.13.2.0
   default-language:    Haskell2010
 
 test-suite hjc-test
@@ -95,10 +96,10 @@ test-suite hjc-test
   hs-source-dirs:      test
   main-is:             Spec.hs
   other-modules:       ASTParserSpec
-                     , ConfigSpec
                      , TypeCheck.TypeCheckSpec
                      , CmmParserSpec
                      , X86Spec
+                     , X86AllocSpec
   build-depends:       base
                      , hjc
                      , megaparsec  >=5.2.0 && < 6
@@ -106,6 +107,7 @@ test-suite hjc-test
                      , hspec >= 2.4.3
                      , process      >= 1.4.3.0
                      , directory    >= 1.0.0.0
+                     , optparse-applicative >= 0.13.2.0
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
 
