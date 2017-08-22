@@ -95,6 +95,7 @@ test-suite hjc-test
                      , TypeCheck.TypeCheckSpec
                      , CmmParserSpec
                      , X86Spec
+                     , X86AllocSpec
   build-depends:       base
                      , hjc
                      , megaparsec  >=5.2.0 && < 6
