@@ -28,7 +28,7 @@ spec = do
                 successfulFileNames = [
                       "Add"
                     , "ArrayAccess"
-                    , "ArrSum"
+                   -- , "ArrSum"
                     , "Effects"
                     , "Factorial"
                     , "Precedence"
@@ -52,13 +52,13 @@ spec = do
                 successfulTitle     = "should compile with gcc "
                 pathToTestFile      = "examples/MiniJava_Examples/Large/"
                 successfulFileNames = [
-                  --   "BinarySearch"
+                     "BinarySearch"
                   -- , "BinaryTree"  -- takes too long for risc386
                      "BubbleSort" 
                     , "Fib"
                     , "FibL"
-                  -- , "LinearSearch"
-                  -- , "Graph"
+                    , "LinearSearch"
+                    , "Graph"
                   -- , "LinkedList"
                     , "ManyArgs"
                    -- , "Newton"      -- takes too long for risc386

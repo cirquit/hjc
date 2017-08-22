@@ -103,7 +103,7 @@ activityAnalysis graph
             in_ = ((use . snd) i) `Set.union` (outs `Set.difference` ((def . snd) i))
             
 
-            out_ = (def . snd) i `Set.union` (Set.unions $ activitiy_ins)
+            out_ = (Set.unions $ activitiy_ins)
             -- debug - TODO
             -- !z =
             --     trace

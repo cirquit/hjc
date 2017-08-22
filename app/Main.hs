@@ -58,8 +58,14 @@ mainTestConfig = Config {
 
 main' :: FilePath -> IO ()
 main' fp = do
+    let inputFile = "../examples/MiniJava_Examples/Small/" ++ fp ++ ".java"
+    evaluateProgram mainTestConfig inputFile
+
+main_ :: FilePath -> IO ()
+main_ fp = do
     let inputFile = "../examples/MiniJava_Examples/Large/" ++ fp ++ ".java"
     evaluateProgram mainTestConfig inputFile
+
 
 
 main'' = do

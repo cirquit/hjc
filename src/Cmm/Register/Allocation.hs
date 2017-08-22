@@ -45,8 +45,8 @@ generateAllocatedx86 :: MiniJava -> IO X86Prog
 generateAllocatedx86 ast = do
     (x86prog, iorefstate) <- evalNameGenT (generatex86Gen ast)
 
-    functions <- parallel $ map (go c iorefstate) (machinePrgFunctions x86prog)
-    -- functions <- sequence $ map (go c iorefstate) (machinePrgFunctions x86prog)
+    -- functions <- parallel $ map (go c iorefstate) (machinePrgFunctions x86prog)
+    functions <- sequence $ map (go c iorefstate) (machinePrgFunctions x86prog)
     return $ replaceFunctions x86prog functions
 
   where c = X86CodeGen
@@ -94,7 +94,7 @@ modifyFunction f = do
 insertRegisterColors :: (MonadNameGen m, MonadIO m, MachineFunction f i, Ord i, Show i) => f -> Reg m f
 insertRegisterColors f = do
     (machineFunctionStackAlloc .
-         machineFunctionFilterInstructions .
+       --  machineFunctionFilterInstructions .
          machineFunctionRenameByMap f) <$> createTempMapping
     
 
