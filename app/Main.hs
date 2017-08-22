@@ -44,20 +44,22 @@ mainConfig = defaultConfig  {
 main :: IO ()
 main = do
     x <- getArgs
-    let eres = runParser cmdP "" (unwords x)
-    case eres of
-        (Left errors) -> do
-            print errors
-        (Right res) -> do
-            let directory = path res
-            case (wholeDir res) of
-                True -> do
-                    inputFiles <- map (\x -> directory </> x) <$> listDirectory directory
-                    inputFiles' <- filterM doesFileExist inputFiles
-                    (t, _) <- timeItT $ mapM_ (evaluateProgram defaultConfig) inputFiles'
-                    showTimeFin t
-                False -> do
-                    evaluateProgram defaultConfig $ path res
+    evaluateProgram mainConfig (x !! 0)
+
+--    let eres = runParser cmdP "" (unwords x)
+--    case eres of
+--        (Left errors) -> do
+--            print errors
+--        (Right res) -> do
+--            let directory = path res
+--            case (wholeDir res) of
+--                True -> do
+--                    inputFiles <- map (\x -> directory </> x) <$> listDirectory directory
+--                    inputFiles' <- filterM doesFileExist inputFiles
+--                    (t, _) <- timeItT $ mapM_ (evaluateProgram defaultConfig) inputFiles'
+--                    showTimeFin t
+--                False -> do
+--                    evaluateProgram defaultConfig $ path res
 
 -- run single example
 main' :: FilePath -> IO ()

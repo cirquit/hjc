@@ -1,7 +1,7 @@
 {-# LANGUAGE BangPatterns, FlexibleContexts #-}
 
 module Cmm.Register.Allocation(
-     allocateAllRegistersGen
+     allocateRegisters
    , generateAllocatedx86
     ) where 
 
@@ -15,6 +15,9 @@ import           Control.Monad.Loops        (maximumOnM)
 import           Control.Lens               hiding ((#), none)
 import           Control.Monad.Trans.State  hiding (State)
 import           Control.Monad.Trans        (lift)
+
+import           Control.Concurrent.ParallelIO.Global  (parallel)
+import           Data.IORef
 
 import           Text.Printf                (printf)
 import           Data.List                  (foldl', find, maximumBy)
@@ -38,25 +41,38 @@ import           Cmm.InterferenceGraph      (createInterferenceGraph)
 import           Cmm.Register.Core      
 
 generateAllocatedx86 :: MiniJava -> IO X86Prog
-generateAllocatedx86 ast = runNameGenT $ generatex86Gen ast >>= go c
+generateAllocatedx86 ast = do
+    (x86prog, iorefstate) <- evalNameGenT (generatex86Gen ast)
+
+    functions <- parallel $ map (go c iorefstate) (machinePrgFunctions x86prog)
+
+    return $ replaceFunctions x86prog functions
+
   where c = X86CodeGen
 
-        go :: X86CodeGen -> X86Prog -> NameGenT IO X86Prog
-        go c p = allocateAllRegistersGen c p
+        go :: X86CodeGen -> IORef ([Temp], [Label]) -> X86Func -> IO X86Func
+        go c state f = runWithNameStateT state (allocateRegisters c f)
 
 
-allocateAllRegistersGen :: (CodeGen c p f i, Ord i, Show i) => c -> p -> NameGenT IO p
-allocateAllRegistersGen c prog = do
-    functions <- mapM (allocateRegisters c) (machinePrgFunctions prog)
-    return $ replaceFunctions prog functions
+-- allocateAllRegistersGen :: (CodeGen c p f i, Ord i, Show i, MonadIO m) => c -> p -> NameGenT m p
+-- allocateAllRegistersGen c prog = do
+--     -- functionHandles <- mapM (\f -> forkExec (allocateRegisters c f)) (machinePrgFunctions prog)
+--     -- functions       <- sequence functionHandles
+--     -- let [f1, f2] = machinePrgFunctions prog
+
+
+--     -- functions <- liftIO $ parallelList' defaultParTaskOpts $ map (\f -> allocateRegisters c f) (machinePrgFunctions prog)
+
+--     functions <- mapM (allocateRegisters c) (machinePrgFunctions prog)
+--     return $ replaceFunctions prog functions
 
 -- | approximates the graph coloring problem, spills the temps and "should" return a colored function function
 --
 allocateRegisters ::
-  (CodeGen c p f i, Ord i, Show i)
+  (CodeGen c p f i, Ord i, Show i, MonadIO m)
   => c
   -> f
-  -> NameGenT IO f
+  -> NameGenT m f
 allocateRegisters c function = evalStateT (modifyFunction function) regState
     where
         ig :: DirectedGraph Temp

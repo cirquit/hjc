@@ -6,11 +6,14 @@ module Cmm.LabelGenerator (
   Temp(..), Label, mkLabel, mkNamedTemp,
   MonadNameGen(..),
   NameGen, runNameGen,
-  NameGenT, runNameGenT
+  NameGenT, runNameGenT, evalNameGenT, runWithNameStateT
   ) where
 
 import Control.Monad.State
 import Control.Monad.Identity
+import Control.Monad.IO.Class
+import Data.IORef
+
 
 -- | A type to represent temporaries.
 --
@@ -55,25 +58,50 @@ class Monad m => MonadNameGen m where
   -- | Generates a fresh label.
   nextLabel' :: m Label
 
+  -- -- | returns the current state (used to atomic access for parallelism)
+  -- getNameState' :: m ([Temp], [Label])
+
+  -- -- | returns the current state (used to atomic access for parallelism)
+  -- setNameState' :: ([Temp], [Label]) -> m ()
+
+
 -- | Name generation monad transformer.
-newtype NameGenT m a = NameGenT (StateT ([Temp], [Label]) m a)
+newtype NameGenT m a = NameGenT (StateT (IORef ([Temp], [Label])) m a)
   deriving (Functor, Applicative, Monad, MonadTrans, MonadIO)
 
 -- | Name generation monad.
-type NameGen a = NameGenT Identity a
+type NameGen a = NameGenT IO a
 
-runNameGen :: NameGen a -> a
-runNameGen = runIdentity . runNameGenT
+runNameGen :: NameGen a -> IO a
+runNameGen = runNameGenT
 
-instance (Monad m) => MonadNameGen (NameGenT m) where
-  nextTemp' = NameGenT $ do (t:ts, ls) <- get; put (ts, ls); return t
-  avoid' av =
-    NameGenT $
-      do (ts, ls) <- get
-         put (filter (\t -> not (show t `elem` (map show av))) ts, ls)
-         return ()
-  nextLabel' = NameGenT $ do (ts, l:ls) <- get; put (ts, ls); return l
+instance (Monad m, MonadIO m) => MonadNameGen (NameGenT m) where
+  nextTemp' = NameGenT $ do
+      stateIORef <- get
+      t <- liftIO $ atomicModifyIORef stateIORef (\((t:ts), ls) -> ((ts, ls), t))
+      return t
+  avoid' av = 
+    NameGenT $ do
+      stateIORef <- get
+      (ts, ls) <- liftIO $ readIORef stateIORef
+      let ts' = filter (\t -> not (show t `elem` (map show av))) ts
+      _ <- liftIO $ atomicModifyIORef stateIORef (\(ts, ls) -> ((ts', ls), ()))
+      return ()
+  nextLabel' = NameGenT $ do
+      stateIORef <- get
+      l  <- liftIO $ atomicModifyIORef stateIORef (\(ts, l:ls) -> ((ts, ls), l))
+      return l
 
-runNameGenT :: (Monad m) => NameGenT m a -> m a
-runNameGenT (NameGenT x) =
-   evalStateT x ([Temp i | i<-[0..]], ["L_" ++ (show i) | i <- [(0::Int)..]])
+runNameGenT :: (Monad m, MonadIO m) => NameGenT m a -> m a
+runNameGenT (NameGenT f) = do
+   state <- liftIO $ newIORef ([Temp i | i<-[0..]], ["L_" ++ (show i) | i <- [(0::Int)..]])
+   evalStateT f state
+
+evalNameGenT :: (Monad m, MonadIO m) => NameGenT m a -> m (a, IORef ([Temp], [Label]))
+evalNameGenT (NameGenT f) = do
+   state <- liftIO $ newIORef ([Temp i | i<-[0..]], ["L_" ++ (show i) | i <- [(0::Int)..]])
+   runStateT f state
+
+runWithNameStateT :: (Monad m, MonadIO m) => IORef ([Temp], [Label]) -> NameGenT m a -> m a
+runWithNameStateT s (NameGenT f) = do
+   evalStateT f s

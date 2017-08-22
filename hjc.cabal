@@ -56,21 +56,25 @@ library
                      , Risc386Clone.TokenIntel
                      , Risc386Clone.Util
                      , Risc386Clone.Wellformed
-  build-depends:       base         >= 4.7     && < 5
-                     , megaparsec   >= 5.2.0   && < 6
-                     , containers   >= 0.5.7.1 && < 6
-                     , mtl          >= 2.2.0   && < 3
-                     , transformers >= 0.5.0.0 && < 6
-                     , lens         >= 4.0.0   && < 5
-                     , rainbow >= 0.28.0.4
-                     , filepath   >= 1.4.0.0
-                     , split > 0.2.3.0 && < 0.3.0.0
-                     , optparse-generic >= 1.1.5
-                     , extra            >= 1.5
-                     , pretty >= 1.0 && < 1.2
-                     , array >= 0.5 && < 0.6
-                     , monad-loops  >= 0.4.3 && < 0.5
-                     , random       >= 1.1
+  build-depends:       base              >= 4.7      && < 5
+                     , megaparsec        >= 5.2.0    && < 6
+                     , containers        >= 0.5.7.1  && < 6
+                     , mtl               >= 2.2.0    && < 3
+                     , transformers      >= 0.5.0.0  && < 6
+                     , lens              >= 4.0.0    && < 5
+                     , rainbow           >= 0.28.0.4
+                     , filepath          >= 1.4.0.0
+                     , split             >= 0.2.3.0  && < 0.3.0.0
+                     , optparse-generic  >= 1.1.5
+                     , extra             >= 1.5
+                     , pretty            >= 1.0      && < 1.2
+                     , array             >= 0.5      && < 0.6
+                     , monad-loops       >= 0.4.3    && < 0.5
+                     , random            >= 1.1
+                     , parallel          >= 3.0      && < 4.0
+                     , parallel-io       >= 0.3.3    && < 0.4
+
+
   default-language:    Haskell2010
 
 executable hjc
