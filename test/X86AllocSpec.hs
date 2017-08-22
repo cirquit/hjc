@@ -76,7 +76,7 @@ spec = do
 testConfig :: Config
 testConfig = Config
     {
-      parse'        = False
+      javaFile      = ""
     , showAst'      = False
     , showResult'   = False
     , showTime'     = True

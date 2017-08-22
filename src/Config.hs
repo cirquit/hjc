@@ -1,68 +1,108 @@
 module Config where
 
-import Text.Megaparsec
-import Text.Megaparsec.Expr
-import Text.Megaparsec.String -- input stream is of type ‘String’
-import Text.Megaparsec.Char as C
-import qualified Text.Megaparsec.Lexer as L
+import Options.Applicative
+import Data.Semigroup ((<>))
 
 data TypeErrorLevel =
     Silently
     | FirstError
     | AllErrors
-        deriving (Eq, Enum, Show)
+        deriving (Eq, Enum, Show, Read)
 
 data Config = Config {
-    parse'        :: Bool
+    javaFile      :: String
   , showAst'      :: Bool
   , showResult'   :: Bool
   , showTime'     :: Bool
   , canonizeCmm   :: Bool
   , compileToCmm  :: Bool
   , compileToX86  :: Bool
-  , compileToAllocatedX86 :: Bool
   , createCFGraph :: Bool
-  , javaOutputDir :: FilePath
-  , cmmOutputDir  :: FilePath
-  , x86OutputDir  :: FilePath
-  , cfOutputDir   :: FilePath
+  , javaOutputDir :: String
+  , cmmOutputDir  :: String
+  , x86OutputDir  :: String
+  , cfOutputDir   :: String
   , typeErrLvl    :: TypeErrorLevel
+  , compileToAllocatedX86 :: Bool
 } deriving (Show)
 
 defaultConfig :: Config
 defaultConfig = Config {
-    parse'        = True
+    javaFile      = ""
   , showAst'      = False
   , showResult'   = False
   , showTime'     = True
   , canonizeCmm   = False
   , compileToCmm  = False
   , compileToX86  = False
-  , compileToAllocatedX86 = False
   , createCFGraph = False
   , javaOutputDir = "output"
   , cmmOutputDir  = "cmm-output"
   , x86OutputDir  = "x86-output"
   , cfOutputDir   = "cf-graph-output"
   , typeErrLvl    = AllErrors
+  , compileToAllocatedX86 = False
 }
 
-data CmdParam = CmdParam {
-    path        :: String
-  , typeErrLvl' :: TypeErrorLevel
-  , wholeDir    :: Bool
-} deriving (Eq, Show)
+parseConfig :: Parser Config
+parseConfig = Config
+   <$> argument str (metavar "javaFile")
+   <*> flag False True
+       ( long "showAst"
+       <> help "show Ast")
+   <*> flag False True
+       ( long "showResult"
+       <> short 'r'
+       <> help "show Result")
+   <*> flag True False
+       ( long "showTime"
+       <> short 't'
+       <> help "show Time")
+   <*> flag True False
+       ( long "canonCmm"
+       <> help "canonize Cmm")
+   <*> flag True False
+       ( long "compileToCmm"
+       <> short 'c'
+       <> help "compile to Cmm")
+   <*> flag True False
+       ( long "compileToX86"
+       <> short 'w'
+       <> help "compile to X86 Code")
+   <*> flag True False
+       ( long "createCFGraph"
+       <> short 'g'
+       <> help "create Control Flow Graph")
+   <*> strOption
+       ( long "javaOutputDir"
+       <> metavar "javaDir"
+       <> value "output"
+       <> help "directory of java files" )
+   <*> strOption
+       ( long "cmmOutputDir"
+       <> metavar "cmmDir"
+       <> value "cmm-output"
+       <> help "directory of cmm files" )
+   <*> strOption
+       ( long "x86OutputDir"
+       <> metavar "x86Dir"
+       <> value "x86-output"
+       <> help "directory of x86 assembly files" )
+   <*> strOption
+       ( long "cfOutputDir"
+       <> metavar "graphDir"
+       <> value "cf-graph-output"
+       <> help "directory of control flow graph" )
+   <*> typeErrorLvl
+   <*> flag True False
+       ( long "compileToAllocatedX86"
+       <> short 'x'
+       <> help "compile to allocated X86 Code")
 
-cmdP :: Parser CmdParam
-cmdP = do
-    path <- identifier
-    space
-    errLvl <- option FirstError ((string "--tsilent" *> return Silently)
-                       <|> (string "--tfirst" *> return FirstError)
-                       <|> (string "--tall" *> return AllErrors))
-    space
-    wholeDir <- option False (return True <* string "--dir")
-    return $ CmdParam path errLvl wholeDir
-
-identifier :: Parser String
-identifier = (:) <$> (alphaNumChar <|> char '.') <*> many (alphaNumChar <|> char '.' <|> char '/' <|> char '_')
+typeErrorLvl :: Parser TypeErrorLevel
+typeErrorLvl = option auto
+            ( long "typeErrLvl"
+           <> short 'e'
+           <> metavar "[AllErrors|Silently|FirstError]"
+           <> value AllErrors
+           <> help "defines which level of errors should bee shown" )

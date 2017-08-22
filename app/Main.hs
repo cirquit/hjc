@@ -6,7 +6,7 @@ import           AST
 import           ASTParser
 import           Lexer
 import           Output
-import           TimeMonad                   (timeItT, time_, time, getTimeInMs, getTimed, io)
+import           TimeMonad                      (timeItT, time_, time, getTimeInMs, getTimed, io)
 import           SymbolTable
 import           TypeCheck.TypeCheck
 import           Config
@@ -16,62 +16,25 @@ import           Text.Megaparsec.Expr
 import           Text.Megaparsec.String
 import qualified Text.Megaparsec.Lexer  as L
 
-import           Control.Monad               (mapM_, filterM)
-import           System.Directory            (listDirectory, createDirectoryIfMissing, doesFileExist)
-import           System.FilePath.Posix       ((</>))
+import qualified Options.Applicative    as OS
+import           Data.Semigroup                 ((<>))
+
+import           Control.Monad                  (mapM_, filterM)
+import           System.Directory               (listDirectory, createDirectoryIfMissing, doesFileExist)
+import           System.FilePath.Posix          ((</>))
 import           System.Environment
 import           Prelude                hiding  (error)
 
-mainConfig :: Config
-mainConfig = defaultConfig  {
-      parse'        = True
-    , showAst'      = False 
-    , showResult'   = False
-    , showTime'     = True
-    , compileToCmm  = True
-    , canonizeCmm   = True
-    , compileToX86  = False
-    , compileToAllocatedX86 = True
-    , createCFGraph = False
-    , javaOutputDir = "../output"
-    , cmmOutputDir  = "../cmm-output"
-    , x86OutputDir  = "../x86-output"
-    , cfOutputDir   = "../cf-graph-output"
-    , typeErrLvl    = AllErrors -- FirstError -- Silently 
-    }
 
--- run all examples
 main :: IO ()
 main = do
-    x <- getArgs
-    let eres = runParser cmdP "" (unwords x)
-    case eres of
-        (Left errors) -> do
-            print errors
-        (Right res) -> do
-            let directory = path res
-            case (wholeDir res) of
-                True -> do
-                    inputFiles <- map (\x -> directory </> x) <$> listDirectory directory
-                    inputFiles' <- filterM doesFileExist inputFiles
-                    (t, _) <- timeItT $ mapM_ (evaluateProgram defaultConfig) inputFiles'
-                    showTimeFin t
-                False -> do
-                    evaluateProgram defaultConfig $ path res
-
--- run single example
-main' :: FilePath -> IO ()
-main' fp = do
-    let inputFiles = [ "../examples/MiniJava_Examples/Small/" ++ fp ++ ".java" ]
-    mapM_ (evaluateProgram mainConfig) inputFiles 
-
--- run examples that should fail (logically, not lexically)
-main'' :: IO ()
-main'' = do
-    let failedDir = "../examples/z_ShouldFail"
-    failedInputFiles <- map (\x -> failedDir </> x) <$> listDirectory failedDir
-    mapM_ (evaluateProgram defaultConfig) failedInputFiles
-
+    mainConfig <- OS.execParser opts
+    evaluateProgram mainConfig $ javaFile mainConfig
+    where
+        opts = OS.info (parseConfig OS.<**> OS.helper)
+            ( OS.fullDesc
+            <> OS.progDesc "hjc MiniJava Compiler"
+            <> OS.header "hjc - A MiniJava Compiler in Haskell" )
 
 evaluateProgram :: Config -> FilePath -> IO ()
 evaluateProgram config inputFile = do
@@ -89,8 +52,7 @@ evaluateProgram config inputFile = do
             showFailure oi config
             showTime oi config
 
-
-        (Right ast) -> do 
+        (Right ast) -> do
 
             oi <- getTimed $ do
                 typescope <- time $ typecheck ast

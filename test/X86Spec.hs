@@ -84,7 +84,7 @@ spec = do
 testConfig :: Config
 testConfig = Config
     {
-      parse'        = True
+      javaFile      = ""
     , showAst'      = False
     , showResult'   = False
     , showTime'     = True
@@ -92,7 +92,7 @@ testConfig = Config
     , compileToX86  = True
     , compileToAllocatedX86 = False
     , canonizeCmm   = True
-    , createCFGraph = False 
+    , createCFGraph = False
     , javaOutputDir = "output"
     , cmmOutputDir  = "cmm-output"
     , x86OutputDir  = "x86-output"

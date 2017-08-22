@@ -91,7 +91,7 @@ makeC inputFile = do
 testConfig :: Config
 testConfig = Config
     {
-      parse'        = True
+      javaFile      = ""
     , showAst'      = False
     , showResult'   = False
     , showTime'     = True
