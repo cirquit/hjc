@@ -57,7 +57,13 @@ createInterferenceGraph function = do
          -> (DirectedGraph Temp, Map (Unique i) ActivityStorage) 
     addTempNodes (graph, activity) i =
         -- let  !a = trace ("Current instruction: " ++ show i) 1
-        -- in  
+        
+        -- let graph' = foldl' addNode graph 
+        --                 ((Set.toList $ (def . snd) i)
+        --                                      ++ (Set.toList $ (use . snd) i)
+        --                                      ++ (Set.toList $ out_a $ activity Map.! i)
+        --                                      ++ (Set.toList $ in_a $ activity Map.! i))
+        -- in
         case (isMoveBetweenTemps . snd) i of
             Nothing -> do
                 let defs = Set.toList $ (def . snd) i
@@ -68,14 +74,34 @@ createInterferenceGraph function = do
                     g'   = foldl' addNode graph (defs ++ outs)
                     g''  = foldl' addBothEdges g' edges
                 (g'', activity)
-            (Just (dst, src))  -> do
-                let outs  = filter (`notElem` [dst,src]) $ Set.toList $ out_a $ activity Map.! i
-                    edges = zip (repeat dst) outs
-          --          !b = trace ("2. Edges: " ++ show edges) 1 
-                    g'    = foldl' addBothEdges graph edges
-                    -- g''   = addNode g' src
-                    g''  = addNode g' dst
-                (g'', activity)
+            (Just (t, v))  -> do
+
+
+                  let outs :: [Temp]
+                      outs = Set.toList $ out_a $ activity Map.! i
+
+                      (edgedGraph, _, _) = foldl' go (graph, v, t) outs 
+                      nodeGraph          = foldl' addNode edgedGraph (t : v : outs)
+
+                  (nodeGraph, activity)
+
+        where
+                go :: (DirectedGraph Temp, Temp, Temp) -> Temp -> (DirectedGraph Temp, Temp, Temp)
+                go (g, v, t) u
+                    | u /= v    = (addBothEdges g (t,u), v, t)
+                    | otherwise = (g, v, t)
+                    -- | otherwise = (addBothEdges g (t,v), v, t)
+
+                --                            t 
+--                let outs  = filter (`notElem` [v]) $ Set.toList $ out_a $ activity Map.! i
+--                    as = activity Map.! i
+--                    activity' = Map.insert i (as { out_a = Set.fromList outs }) activity
+--                    edges = zip (repeat t) outs
+--          --          !b = trace ("2. Edges: " ++ show edges) 1 
+--                    g'    = foldl' addBothEdges graph' edges
+--                    -- g''   = addNode g' v
+--                    g''  = foldl' addNode g' (t : outs) 
+--                (g'', activity')
 
 addBothEdges :: DirectedGraph Temp -> (Temp, Temp) -> DirectedGraph Temp
 addBothEdges g (a, b) = addEdge (addEdge g a b) b a

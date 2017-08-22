@@ -36,12 +36,12 @@ defaultConfig = Config {
   , compileToCmm  = False
   , compileToX86  = False
   , createCFGraph = False
-  , javaOutputDir = "output"
-  , cmmOutputDir  = "cmm-output"
-  , x86OutputDir  = "x86-output"
-  , cfOutputDir   = "cf-graph-output"
+  , javaOutputDir = "../output"
+  , cmmOutputDir  = "../cmm-output"
+  , x86OutputDir  = "../x86-output"
+  , cfOutputDir   = "../cf-graph-output"
   , typeErrLvl    = AllErrors
-  , compileToAllocatedX86 = False
+  , compileToAllocatedX86 = True
 }
 
 parseConfig :: Parser Config

@@ -108,7 +108,7 @@ getFromStack  = do
         _     -> return $ Nothing
 
 getAllSpilled :: (MonadNameGen m, MonadIO m) => Reg m (Set Temp)
-getAllSpilled = tuplesToSet . filter isSpilled . Map.toAscList <$> (view tempStates <$> get)
+getAllSpilled = tuplesToSet . filter isSpilled . Map.toList <$> (view tempStates <$> get)
     where 
         tuplesToSet :: (Ord k) => [(k,v)] -> Set k
         tuplesToSet = Set.fromList . map fst
@@ -128,9 +128,16 @@ deleteSpilledTemps spilled = mapM_ (\s -> tempStates %= Map.delete s) spilled
 addNewTempStates :: (MonadNameGen m, MonadIO m) => Reg m ()
 addNewTempStates = do
     ans       <- allNodes
+
+    -- ts <- view tempStates <$> get
+    -- liftIO $ putStrLn $ "Tempstates before: " ++ concatMap (\x -> show x ++ "\n") (Map.toList ts)
+
     prevNodes <- Map.keysSet <$> (view tempStates <$> get)
     let newTemps = Set.filter (`Set.notMember` prevNodes) ans
     mapM_ (\t -> tempStates %= Map.insert t Clean) newTemps
+
+    -- ts' <- view tempStates <$> get
+    -- liftIO $ putStrLn $ "Tempstates after: " ++ concatMap (\x -> show x ++ "\n") (Map.toList ts')
 
 isColored :: (MonadNameGen m, MonadIO m) => Temp -> Reg m Bool
 isColored t = t `hasState` colored
@@ -185,7 +192,7 @@ printDebugMessage str = do
     liftIO $ putStrLn $ "!!! Tempstack: !!! "
     liftIO $ putStrLn $ unlines $ map show ts
     liftIO $ putStrLn $ "!!! Tempstates: !!!"
-    liftIO $ putStrLn $ unlines $ map show $ Map.toAscList tstates
+    liftIO $ putStrLn $ unlines $ map show $ Map.toList tstates
 
 
 
@@ -200,7 +207,6 @@ mapSM f s = Set.fromList <$> (mapM f (Set.toList s))
 mapSM_ :: (Monad m, Ord a, Ord b) => (a -> m b) -> Set a -> m ()
 mapSM_ f s = mapSM f s >> return ()
 
-
--- none :: [a] -> Bool
+none :: Set a -> Bool
 none s = 0 == (Set.size s)
 

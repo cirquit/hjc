@@ -37,11 +37,41 @@ main = do
             <> OS.header "hjc - A MiniJava Compiler in Haskell" )
 
 
+mainTestConfig :: Config
+mainTestConfig = Config {
+    javaFile      = ""
+  , showAst'      = False
+  , showResult'   = False
+  , showTime'     = True
+  , canonizeCmm   = True
+  , compileToCmm  = True
+  , compileToX86  = True
+  , compileToAllocatedX86 = True
+  , createCFGraph = True
+  , javaOutputDir = "../output"
+  , cmmOutputDir  = "../cmm-output"
+  , x86OutputDir  = "../x86-output"
+  , cfOutputDir   = "../cf-graph-output"
+  , typeErrLvl    = AllErrors
+}
+
+
+main' :: FilePath -> IO ()
+main' fp = do
+    let inputFile = "../examples/MiniJava_Examples/Large/" ++ fp ++ ".java"
+    evaluateProgram mainTestConfig inputFile
+
+
+main'' = do
+    let inputFile = "../examples/" ++ "Spill" ++ ".java"
+    evaluateProgram mainTestConfig inputFile
+
 evaluateProgram :: Config -> FilePath -> IO ()
 evaluateProgram config inputFile = do
     createDirectoryIfMissing True $ javaOutputDir config
-    createDirectoryIfMissing True $ cmmOutputDir config
-    createDirectoryIfMissing True $ x86OutputDir config
+    createDirectoryIfMissing True $ cmmOutputDir  config
+    createDirectoryIfMissing True $ x86OutputDir  config
+    createDirectoryIfMissing True $ cfOutputDir   config
     putStrLn $ ">> Starting to lex " ++ inputFile
     (parseTime, (eres, input)) <- timeItT $ do
         input <- readFile inputFile

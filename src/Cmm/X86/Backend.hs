@@ -224,9 +224,10 @@ binopx86 (BINOP binOp e1 e2) = do
         XOR_C   -> xor  op1 op2 
         DIV_C   -> do 
             mov eax op1  # "moving first arg to eax for idiv"
-            mov ecx op2
+            t <- nextTempO 
+            mov t op2
             cdq
-            idiv ecx
+            idiv t
             mov op1 eax  # "move idiv result to initial destination"
         _       -> error $ "X86Backend.cmmExp2x86 - binOp " ++ show binOp ++ " is not implemented yet"
 
@@ -280,4 +281,4 @@ instance CodeGen X86CodeGen X86Prog X86Func X86Instr where
     allRegisters _ = Set.fromList [espT, ebpT, eaxT, ebxT, ecxT, edxT, esiT, ediT]
 
 --  generalPurposeRegisters :: c -> Set Temp
-    generalPurposeRegisters _ = Set.fromList [eaxT, ecxT, edxT, ebxT, esiT, ediT]
+    generalPurposeRegisters _ = Set.fromList [eaxT, ebxT, ecxT, edxT, esiT, ediT]

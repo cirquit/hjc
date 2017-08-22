@@ -95,11 +95,15 @@ activityAnalysis graph
            -- !x = trace ("looking for - " ++ show i ++ " in " ++ show lm)
             activitiy_ins = map (\i -> in_a $ fromJust $ Map.lookup i lm) succs
             -- out_ :: Set Temp
-            out_ = Set.unions $ activitiy_ins
+
+            outs = out_a $ fromJust $ Map.lookup i lm
             -- in_  :: Set Temp
             --                    t1                +    ([t1,t51,t5]   - [t51])
             --                                               [t1,t5]
-            in_ = ((use . snd) i) `Set.union` (out_ `Set.difference` ((def . snd) i))
+            in_ = ((use . snd) i) `Set.union` (outs `Set.difference` ((def . snd) i))
+            
+
+            out_ = (def . snd) i `Set.union` (Set.unions $ activitiy_ins)
             -- debug - TODO
             -- !z =
             --     trace

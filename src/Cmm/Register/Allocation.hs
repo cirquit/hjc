@@ -24,6 +24,7 @@ import           Data.List                  (foldl', find, maximumBy)
 import           Debug.Trace                (trace)
 import           Data.Maybe                 (fromJust)
 import           Data.Ord                   (comparing)
+import           Data.Char                  (isAlphaNum)
 
 import           AST                        (MiniJava())
 import           Cmm.X86.Backend            (generatex86Gen)
@@ -45,7 +46,7 @@ generateAllocatedx86 ast = do
     (x86prog, iorefstate) <- evalNameGenT (generatex86Gen ast)
 
     functions <- parallel $ map (go c iorefstate) (machinePrgFunctions x86prog)
-
+    -- functions <- sequence $ map (go c iorefstate) (machinePrgFunctions x86prog)
     return $ replaceFunctions x86prog functions
 
   where c = X86CodeGen
@@ -53,23 +54,10 @@ generateAllocatedx86 ast = do
         go :: X86CodeGen -> IORef ([Temp], [Label]) -> X86Func -> IO X86Func
         go c state f = runWithNameStateT state (allocateRegisters c f)
 
-
--- allocateAllRegistersGen :: (CodeGen c p f i, Ord i, Show i, MonadIO m) => c -> p -> NameGenT m p
--- allocateAllRegistersGen c prog = do
---     -- functionHandles <- mapM (\f -> forkExec (allocateRegisters c f)) (machinePrgFunctions prog)
---     -- functions       <- sequence functionHandles
---     -- let [f1, f2] = machinePrgFunctions prog
-
-
---     -- functions <- liftIO $ parallelList' defaultParTaskOpts $ map (\f -> allocateRegisters c f) (machinePrgFunctions prog)
-
---     functions <- mapM (allocateRegisters c) (machinePrgFunctions prog)
---     return $ replaceFunctions prog functions
-
 -- | approximates the graph coloring problem, spills the temps and "should" return a colored function function
 --
 allocateRegisters ::
-  (CodeGen c p f i, Ord i, Show i, MonadIO m)
+  (CodeGen c p f i, Ord i, Show i, MonadIO m, Show f)
   => c
   -> f
   -> NameGenT m f
@@ -85,15 +73,17 @@ allocateRegisters c function = evalStateT (modifyFunction function) regState
             , _tempStack         = []
             }
 
-modifyFunction :: (MonadNameGen m, MonadIO m, MachineFunction f i, Ord i, Show i) => f -> Reg m f
+modifyFunction :: (MonadNameGen m, MonadIO m, MachineFunction f i, Ord i, Show i, Show f) => f -> Reg m f
 modifyFunction f = do
     coloringPass
     spilled <- getAllSpilled
     case (not . none $ spilled) of
         True -> do
-            -- liftIO $ putStrLn $ show spilled
+            -- liftIO $ putStrLn $ show (length spilled) ++ ": " ++  show spilled
+            --liftIO $ writeFile ("pre-spill" ++ filter isAlphaNum (show spilled) ++ ".asm") (show f)
             -- liftIO $ putStrLn "\n\n\n\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n\n\n"
             newFunction <- lift $ machineFunctionSpill f spilled  -- modifying the function with asm
+            -- liftIO $ writeFile ("after-spill" ++ filter isAlphaNum (show spilled) ++ ".asm") (show newFunction)
             updateInterferenceGraph newFunction            -- create new interferencegraph
             deleteSpilledTemps spilled                     -- delete spilled from our local (temp -> state mapping)
             resetAllSpilledTemps                           -- if you didn't spill every possible temp, this would reset them accordignly

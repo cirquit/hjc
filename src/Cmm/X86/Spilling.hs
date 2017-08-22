@@ -74,7 +74,7 @@ instance MachineFunction X86Func X86Instr where
         let body = x86body f
 
             createMappings :: [(Temp -> Temp)]
-            createMappings = map (\(k, v) -> renameTemp k v) $ Map.toAscList tempMapping
+            createMappings = map (\(k, v) -> renameTemp k v) $ Map.toList tempMapping
             -- TODO
             -- !z = trace ("Tempmappings: \n" ++ concatMap (\x -> show x ++ "\n") (Map.toAscList tempMapping)) 1
 
@@ -110,17 +110,25 @@ spillTemps f = go (x86body f) (x86comments f)
             st <- view spilledTemps <$> get
             let used :: Set Temp
                 used = Set.intersection (use i) st
-
+               
                 defd :: Set Temp
                 defd = Set.intersection (def i) st
+                -- error "before trace?"
+               -- !z = trace (unlines [
+               --     ("instruction: " ++ show i)
+               --     ,"st:          " ++ show st
+               --     ,"use:         " ++ (show $use i)
+               --     ,"used:        " ++ (show used)
+               --     ,"def:         " ++ (show $ def i)
+               --     ,"defd:        " ++ (show defd) ]) 1
 
-            usedInstructions   <- mapM genUsedInstructions $ Set.toList used
+            usedInstructions   <- mapM genUsedInstructions $ Set.toList used -- `Set.intersection` defd) 
             defdInstructions   <- mapM genDefsInstructions $ Set.toList defd
             renamedInstruction <- replaceTemps i (used `Set.union` defd)
 
-            mapM_ addInstructon usedInstructions
+            mapM_ (addInstructonWithComment ("'used' for " ++ show used)) usedInstructions
             addInstructon renamedInstruction
-            mapM_ addInstructon defdInstructions
+            mapM_ (addInstructonWithComment ("'defd' for " ++ show defd)) defdInstructions
             go is cs
 
 
@@ -184,6 +192,9 @@ calculateMemoryAddress i =
 
 addInstructon :: MonadNameGen m => X86Instr -> Spill m ()
 addInstructon i = appendInstrComm (i, emptyComment)
+
+addInstructonWithComment :: MonadNameGen m => String -> X86Instr -> Spill m ()
+addInstructonWithComment s i = appendInstrComm (i, comment s)
 
 appendInstrComm :: MonadNameGen m => (X86Instr, X86Comment) -> Spill m ()
 appendInstrComm (i, c) = do
@@ -286,61 +297,52 @@ addTemp (Mem ea)
 addTemp _        = []
 
 x86Use :: X86Instr -> [Temp]
-x86Use (Unary  POP  (_, _))  = []
-x86Use (Unary  PUSH (_, op)) = addTemp op
-x86Use (Unary  IDIV (_, op)) = addTemp op
-x86Use x@(Unary  _  (_, _))  = error $ "x86Use: didnt define rules for " ++ show x
-
-x86Use x@(Binary MOV  (_, (Mem ea)) (_, op)) = getMemoryTemps ea ++ addTemp op -- trace ("Use Mov for: " ++ show x ++ ", with temp " ++ show (addTemp op)) (addTemp op)
-x86Use x@(Binary MOV  (_, _) (_, op)) = addTemp op
-x86Use (Binary LEA  (_, _) (_, op)) = addTemp op
-
-x86Use (Binary ADD  (_, op1) (_, op2)) = addTemp op1 ++ addTemp op2
-x86Use (Binary SUB  (_, op1) (_, op2)) = addTemp op1 ++ addTemp op2
-x86Use (Binary AND  (_, op1) (_, op2)) = addTemp op1 ++ addTemp op2
-x86Use (Binary OR   (_, op1) (_, op2)) = addTemp op1 ++ addTemp op2
-x86Use (Binary XOR  (_, op1) (_, op2)) = addTemp op1 ++ addTemp op2
-x86Use (Binary CMP  (_, op1) (_, op2)) = addTemp op1 ++ addTemp op2
-x86Use (Binary IMUL (_, op1) (_, op2)) = addTemp op1 ++ addTemp op2
-x86Use x@(Binary _  (_, _)   (_, _))   = error $ "x86Use: didnt define rules for " ++ show x
-
-x86Use (CALL _)                  = []
+x86Use (Unary  POP  (_, _))                = []
+x86Use (Unary  PUSH (_, op))               = addTemp op
+x86Use (Unary  IDIV (_, op))               = addTemp op
+x86Use (Binary MOV  (_, (Reg _)) (_, op))  = addTemp op
+x86Use (Binary _    (_,     op1) (_, op2)) = addTemp op1 ++ addTemp op2
 x86Use  RET                      = [eaxT]
+x86Use (CALL _)                  = []
 x86Use x@_                       = [] -- trace ("No temps for this guy: " ++ show x) []
-
 
 x86Def :: X86Instr -> [Temp]
 x86Def (Unary  POP  (_, op)) = addTemp op
 x86Def (Unary  PUSH (_, _))  = []
 x86Def (Unary  IDIV (_, _))  = [edxT, eaxT]
-x86Def x@(Unary _   (_, _))  = error $ "x86Def: didnt define rules for " ++ show x
-
-x86Def x@(Binary MOV    (_, op) (_, _)) = addTemp op -- trace ("Def Mov for: " ++ show x ++ ", with temp " ++ show (addTemp op)) (addTemp op)
-x86Def (Binary LEA    (_, op) (_, _)) = addTemp op
+x86Def (CALL _)              = [eaxT, ecxT, edxT]
 x86Def (Binary ADD    (_, op) (_, _)) = addTemp op
-x86Def (Binary SUB    (_, op) (_, _)) = addTemp op
 x86Def (Binary AND    (_, op) (_, _)) = addTemp op
+x86Def (Binary IMUL   (_, op) (_, _)) = addTemp op
+x86Def (Binary MOV    (_, Mem eq) (_, _)) = []
+x86Def (Binary MOV    (_, op) (_, _)) = addTemp op
 x86Def (Binary OR     (_, op) (_, _)) = addTemp op
 x86Def (Binary XOR    (_, op) (_, _)) = addTemp op
-x86Def (Binary CMP    (_, _)  (_, _)) = []
-x86Def (Binary IMUL   (_, op) (_, _)) = addTemp op
-x86Def x@(Binary _    (_, op) (_, _)) = error $ "x86Def: didnt define rules for " ++ show x
+x86Def (Binary SUB    (_, op) (_, _)) = addTemp op
+x86Def x@_                            = [] -- trace ("No temps for this guy: " ++ show x) []
 
-x86Def (CALL _)  = [eaxT, ecxT, edxT]
-x86Def x@_       = [] -- trace ("No temps for this guy: " ++ show x) []
+x86Jump :: X86Instr -> [Label]
+x86Jump (JMP l)  = [l]
+x86Jump (J _ l)  = [l]
+x86Jump _        = []
 
+x86FallThrough :: X86Instr -> Bool
+x86FallThrough (RET)   = False
+x86FallThrough (JMP _) = False
+x86FallThrough _       = True
 
 x86MovT :: X86Instr -> Maybe (Temp, Temp)
-x86MovT (Binary MOV (_, (Reg t1)) (_, op2)) = do
-    case (getTemp op2) of
-        (Just t2)
-          | (t1 == ebpT) ||
-            (t1 == espT) ||
-            (t2 == ebpT) ||
-            (t2 == espT) -> Nothing
-          | otherwise -> Just (t1, t2)
-        _ -> Nothing
+x86MovT (Binary MOV (_, (Reg t1)) (_,Reg t2)) = do
+    if   ((t1 == ebpT) ||
+          (t1 == espT) ||
+          (t2 == ebpT) ||
+          (t2 == espT)) then Nothing
+          else Just (t1, t2)
 x86MovT _ = Nothing
+
+x86Label :: X86Instr -> Maybe Label
+x86Label (LABEL l) = Just l
+x86Label _         = Nothing
 
 
 getTemp :: Operand -> Maybe Temp
@@ -354,62 +356,36 @@ x86AssignT (Unary _  (_, (Reg t))   )  = Just t
 x86AssignT (Binary _ (_, (Reg t1)) _)  = Just t1
 x86AssignT _                           = Nothing
 
-x86Jump :: X86Instr -> [Label]
-x86Jump (JMP l)  = [l]
-x86Jump (J _ l)  = [l]
-x86Jump _        = []
-
-x86Label :: X86Instr -> Maybe Label
-x86Label (LABEL l) = Just l
-x86Label _         = Nothing
-
 x86Rename :: X86Instr -> (Temp -> Temp) -> X86Instr
-x86Rename (Unary i (s, Reg t)) f                 = Unary  i (s,  Reg (f t))
-x86Rename (Unary i (s, Mem m)) f                 = Unary  i (s,  Mem (rMem f m))
-x86Rename (Binary i (s1, Reg t1) (s2, Reg t2)) f = Binary i (s1, Reg (f t1)) (s2, Reg (f t2))
-x86Rename (Binary i (s1, Mem m1) (s2, Mem m2)) f = Binary i (s1, Mem (rMem f m1)) (s2, Mem (rMem f m2))
+x86Rename (Unary i (s, op)) f              = Unary  i (s,  renameOp op f)
+x86Rename (Binary i (s1, op1) (s2, op2)) f = Binary i (s1, renameOp op1 f) (s2, renameOp op2 f)
+x86Rename i                              _ = i
 
-x86Rename (Binary i (s1, Reg t1) (s2, Mem m2)) f = Binary i (s1, Reg (f t1)) (s2, Mem (rMem f m2))
-x86Rename (Binary i (s1, Mem m1) (s2, Reg t2)) f = Binary i (s1, Mem (rMem f m1)) (s2, Reg (f t2))
+renameOp :: Operand -> (Temp -> Temp) -> Operand
+renameOp (Imm i)  _ = Imm i
+renameOp (Reg t)  f = Reg $ f t
+renameOp (Mem ea) f = Mem $ renameEa ea f
+  where
+    renameEa (EffectiveAddress (Just t) is@_ d) f = EffectiveAddress (Just $ f t) is d
 
-x86Rename (Binary i op1@_        (s2, Reg t2)) f = Binary i op1 (s2, Reg (f t2))
-x86Rename (Binary i op1@_        (s2, Mem m2)) f = Binary i op1 (s2, Mem (rMem f m2))
-x86Rename (Binary i (s1, Reg t1) op2@_       ) f = Binary i (s1, Reg (f t1)) op2
-x86Rename (Binary i (s1, Mem m1) op2@_       ) f = Binary i (s1, Mem (rMem f m1)) op2
 
-x86Rename i _                                    = i
-
-rMem :: (Temp -> Temp) -> EffectiveAddress -> EffectiveAddress
-rMem f (EffectiveAddress (Just t1) is@_ d) = EffectiveAddress (Just (f t1)) is d
-
-x86FallThrough :: X86Instr -> Bool
-x86FallThrough (RET)   = False
-x86FallThrough (JMP _) = False
-x86FallThrough _       = True
-
+-- | custom optimizing functions
+--
+--   filter not used temps and instructions which move from eg. eax -> eax
+--
 usedTemps :: X86Instr -> [Temp]
-usedTemps (Unary  _ (_, Reg t))              = [t]
-usedTemps (Unary  _ (_, Mem m))              = getMemoryTemps m
-usedTemps (Binary _ (_, Reg t1) (_, Reg t2)) = [t1,t2]
-usedTemps (Binary _ (_, Mem m1) (_, Mem m2)) = getMemoryTemps m1 ++ getMemoryTemps m2
+usedTemps (Unary  _ (_, op))           = getTempList op
+usedTemps (Binary _ (_, op1) (_, op2)) = getTempList op1 ++ getTempList op2
+usedTemps i                            = []
 
-usedTemps (Binary _ (_, Reg t1) (_, Mem m1)) = [t1] ++ getMemoryTemps m1
-usedTemps (Binary _ (_, Mem m1) (_, Reg t1)) = getMemoryTemps m1 ++ [t1]
-
-usedTemps (Binary _ (_, Reg t)  _) = [t]
-usedTemps (Binary _ (_, Mem m)  _) = getMemoryTemps m
-
-usedTemps (Binary _ _  (_, Reg t)) = [t]
-usedTemps (Binary _ _  (_, Mem m)) = getMemoryTemps m
-
-usedTemps i                                  = []
-
-getMemoryTemps :: EffectiveAddress -> [Temp]
-getMemoryTemps (EffectiveAddress (Just t1) _ _) = [t1]
+getTempList :: Operand -> [Temp]
+getTempList (Imm _) = []
+getTempList (Reg t) = [t]
+getTempList (Mem (EffectiveAddress (Just t) _ _)) = [t]
 
 sameBinaryMove :: X86Instr -> Bool
 sameBinaryMove (Binary MOV (_,op1) (_,op2)) = op1 == op2
-sameBinaryMove _ = False
+sameBinaryMove _                            = False
 
 invalidTemp :: X86Instr -> Bool
 invalidTemp i = any areGeneratedTemps temps
