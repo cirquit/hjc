@@ -65,7 +65,7 @@ parseConfig = Config
        ( long "compileToCmm"
        <> short 'c'
        <> help "compile to Cmm")
-   <*> flag True False
+   <*> flag False True
        ( long "compileToX86"
        <> short 'w'
        <> help "compile to X86 Code")
