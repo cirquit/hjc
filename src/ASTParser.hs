@@ -18,7 +18,7 @@ miniJavaParser = MiniJava <$> mainClassP <*> many usualClassP
 
 mainClassP :: Parser Class
 mainClassP = do
-    sc -- TODO: This is somehow needed for examples/TreeVisitor.java
+    sc
     symbol "class"
     id <- identifier
     (vars, main, methods) <-
@@ -174,9 +174,6 @@ memberGetP = do
     dot
     id <- identifier
     return (\e -> MemberGet e id)
---
---manyUnaryOps :: Parser (Expression -> Expression) -> Parser (Expression -> Expression)
---manyUnaryOps = foldr1 (.) <$> some 
 
 unaryOps :: [(String, UnaryOp)] -> Parser (Expression -> Expression)
 unaryOps ops =

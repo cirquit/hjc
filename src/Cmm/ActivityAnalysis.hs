@@ -19,12 +19,7 @@ import qualified Data.Map.Strict as Map
 
 import Text.Printf (printf)
 import Data.List (foldl', find)
-import Debug.Trace (trace)
 import Data.Maybe (fromJust)
-
--- TODO
-import System.IO.Unsafe (unsafePerformIO)
-import System.Random (getStdGen)
 
 -- | simple data type to store the
 --     written temps  ~ out
@@ -49,21 +44,13 @@ emptyActivityStorage =
 activityAnalysis
     :: (MachineInstr i, Ord i, Show i)
     => DirectedGraph (Unique i) -> Map (Unique i) ActivityStorage
-activityAnalysis graph
-                 -- revGraph :: DirectedGraph (Int, i)
- =
+activityAnalysis graph =
+    -- revGraph :: DirectedGraph (Int, i)
     let revGraph = reverseGraph graph
-        -- !gen = show $ unsafePerformIO $ getStdGen
-        -- !x =
-        --     unsafePerformIO $
-        --     writeFile
-        --         ("../cf-graph-output/test-" ++ take 10 gen ++ "-.dot")
-        --         (show graph)
+
         lastReturn = (Set.size (nodes revGraph) + 1, ret)
         -- revNodes :: (Ord i) => [(Int, i)]
         revNodes = toList revGraph lastReturn
-      --  !m = trace (show revGraph) 1
-      --  !y = trace (show revNodes) 1
         -- livelinessMap :: Map (Int, i) ActivityStorage
         livelinessMap =
             Map.fromList $ zip revNodes (repeat emptyActivityStorage)
@@ -71,54 +58,19 @@ activityAnalysis graph
         runUpate lm = fst $ foldl' updateActivities (lm, graph) revNodes
         -- newMap :: Map (Int, i) ActivityStorage
         solvedMap = repeatUntilSame livelinessMap runUpate
-        -- debug - TODO
-        -- !z =
-        --     trace
-        --         (concatMap
-        --              (\((line, instr), (ActivityStorage o i)) ->
-        --                    printf
-        --                        "#%d. %-30s out: %-20s in: %-20s \n"
-        --                        line
-        --                        (show instr)
-        --                        (show (Set.toList o))
-        --                        (show (Set.toList i)))
-        --              (Map.toAscList solvedMap))
-        --         1
     in solvedMap
--- updateActivities :: (Ord i, Show i)
   where
-    updateActivities (lm, g) i
-                             -- succs ::  [(Int, i)]
-     =
+    updateActivities (lm, g) i =
+            -- succs ::  [(Int, i)]
         let succs = Set.toList $ successors g i
             -- activity_ins :: [Set i]
-           -- !x = trace ("looking for - " ++ show i ++ " in " ++ show lm)
             activitiy_ins = map (\i -> in_a $ fromJust $ Map.lookup i lm) succs
             -- out_ :: Set Temp
-
             outs = out_a $ fromJust $ Map.lookup i lm
             -- in_  :: Set Temp
-            --                    t1                +    ([t1,t51,t5]   - [t51])
-            --                                               [t1,t5]
             in_ = ((use . snd) i) `Set.union` (outs `Set.difference` ((def . snd) i))
-            
 
             out_ = (Set.unions $ activitiy_ins)
-            -- debug - TODO
-            -- !z =
-            --     trace
-            --         (unlines
-            --              [ "Instruction:       " ++ show i
-            --              , "    succs:         " ++ show succs
-            --              , "    activitiy_ins: " ++ show activitiy_ins
-            --              , "    out/def        " ++
-            --                show (out_ `Set.difference` ((def . snd) i))
-            --              , "    uses           " ++ show ((use . snd) i)
-            --              , "    defs           " ++ show ((def . snd) i)
-            --              , "    new_out:       " ++ show out_
-            --              , "    new_in:        " ++ show in_
-            --              ])
-            --         1
             activitiy =
                 ActivityStorage
                 { out_a = out_
@@ -126,12 +78,7 @@ activityAnalysis graph
                 }
         in (Map.insert i activitiy lm, g)
 
---           => (Map (Unique i) ActivityStorage, DirectedGraph (Unique i))
---           -> Unique i
---           -> (Map (Unique i) ActivityStorage, DirectedGraph (Unique i))
-repeatUntilSame
-    :: Eq s
-    => s -> (s -> s) -> s
+repeatUntilSame :: Eq s => s -> (s -> s) -> s
 repeatUntilSame state transform = do
     let newState = transform state
     case state == newState of

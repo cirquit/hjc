@@ -12,36 +12,38 @@ data TypeErrorLevel =
 data Config = Config {
     javaFile      :: String
   , showAst'      :: Bool
-  , showResult'   :: Bool
   , showTime'     :: Bool
   , canonizeCmm   :: Bool
   , compileToCmm  :: Bool
   , compileToX86  :: Bool
-  , createCFGraph :: Bool
+  , createIFGraph :: Bool
   , javaOutputDir :: String
   , cmmOutputDir  :: String
   , x86OutputDir  :: String
   , cfOutputDir   :: String
   , typeErrLvl    :: TypeErrorLevel
   , compileToAllocatedX86 :: Bool
+  , showJava      :: Bool
+  , inParallel    :: Bool
 } deriving (Show)
 
 defaultConfig :: Config
 defaultConfig = Config {
     javaFile      = ""
   , showAst'      = False
-  , showResult'   = False
   , showTime'     = True
   , canonizeCmm   = False
   , compileToCmm  = False
   , compileToX86  = False
-  , createCFGraph = False
+  , createIFGraph = False
   , javaOutputDir = "../output"
   , cmmOutputDir  = "../cmm-output"
   , x86OutputDir  = "../x86-output"
-  , cfOutputDir   = "../cf-graph-output"
+  , cfOutputDir   = "../if-graph-output"
   , typeErrLvl    = AllErrors
   , compileToAllocatedX86 = True
+  , showJava      = False
+  , inParallel    = True
 }
 
 parseConfig :: Parser Config
@@ -50,18 +52,14 @@ parseConfig = Config
    <*> flag False True
        ( long "showAst"
        <> help "show Ast")
-   <*> flag False True
-       ( long "showResult"
-       <> short 'r'
-       <> help "show Result")
    <*> flag True False
        ( long "showTime"
        <> short 't'
        <> help "show Time")
-   <*> flag True False
+   <*> flag False True
        ( long "canonCmm"
        <> help "canonize Cmm")
-   <*> flag True False
+   <*> flag False True
        ( long "compileToCmm"
        <> short 'c'
        <> help "compile to Cmm")
@@ -69,8 +67,8 @@ parseConfig = Config
        ( long "compileToX86"
        <> short 'w'
        <> help "compile to X86 Code")
-   <*> flag True False
-       ( long "createCFGraph"
+   <*> flag False True
+       ( long "createIFGraph"
        <> short 'g'
        <> help "create Control Flow Graph")
    <*> strOption
@@ -89,15 +87,22 @@ parseConfig = Config
        <> value "x86-output"
        <> help "directory of x86 assembly files" )
    <*> strOption
-       ( long "cfOutputDir"
+       ( long "ifOutputDir"
        <> metavar "graphDir"
-       <> value "cf-graph-output"
-       <> help "directory of control flow graph" )
+       <> value "if-graph-output"
+       <> help "directory of interference graph" )
    <*> typeErrorLvl
    <*> flag True False
        ( long "compileToAllocatedX86"
        <> short 'x'
        <> help "compile to allocated X86 Code")
+   <*> flag False True
+       ( long "showJava"
+       <> help "show the recreated java output")
+   <*> flag True False
+       ( long "inSequence"
+       <> short 's'
+       <> help "run the computation sequentially")
 
 typeErrorLvl :: Parser TypeErrorLevel
 typeErrorLvl = option auto

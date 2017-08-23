@@ -75,6 +75,7 @@ type NameGen a = NameGenT IO a
 runNameGen :: NameGen a -> IO a
 runNameGen = runNameGenT
 
+-- | had to create an atomic interface for NameGenT based on MonadIO
 instance (Monad m, MonadIO m) => MonadNameGen (NameGenT m) where
   nextTemp' = NameGenT $ do
       stateIORef <- get

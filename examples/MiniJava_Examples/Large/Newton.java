@@ -212,7 +212,7 @@ class NewtonClass { //  extends FracOps
     Frac delta;
     int rc;
     half = fops.mkFrac(1,2);
-    epsilon = fops.mkFrac(1,100);
+    epsilon = fops.mkFrac(1,10);
     x = fops.mkFrac(n,1);
     delta = x;
     while (fops.lt(epsilon, delta)) {

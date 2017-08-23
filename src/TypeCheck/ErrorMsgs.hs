@@ -10,14 +10,6 @@ import qualified SymbolTable   as ST
 import           AST
 import           TypeCheck.TCCore
 
-
-
--- data ErrorClass = 
---       ClassErr
---     | MethodErr
---     | VariableErr    
-
-
 -- | helper to save the current scope with the class and method
 --   where the error happend
 --
@@ -33,7 +25,6 @@ appendError errMsg = do
 undefinedExtendedsClassError :: Identifier -> StateT TypeScope IO ()
 undefinedExtendedsClassError id = appendError . return $ do
     printf "undefined extended class \"%s\"" id
-
 
 
 -- | operator error messages

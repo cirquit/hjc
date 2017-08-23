@@ -18,7 +18,6 @@ import qualified Data.Map.Strict as Map
 
 import           Text.Printf            (printf)
 import           Data.List              (foldl', find)
-import           Debug.Trace            (trace)
 
 type Unique i = (Int, i)
 
@@ -32,7 +31,6 @@ createControlFlowGraph f = addInstructionsToGraph emptyGraph body body
 -- | creates a directed graph of the instructions and by connecting
 --   subsequent instructions and the labels if it is a jump
 
--- TODO refactor this
 addInstructionsToGraph :: (MachineInstr i, Ord i, Show i) => DirectedGraph (Unique i) -> [(Unique i)] -> [(Unique i)] -> DirectedGraph (Unique i)
 addInstructionsToGraph g []         imm = g
 addInstructionsToGraph g ((n,i):is) imm = do

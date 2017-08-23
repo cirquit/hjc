@@ -200,8 +200,6 @@ data Type
     | StringArrT -- String[]
     deriving (Show, Eq)
 
--- TODO Alternative for Type
-
 instance ShowJava Type where
     showJC IntArrT    = "int[]"
     showJC IntT       = "int"

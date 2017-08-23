@@ -25,7 +25,6 @@ import           System.FilePath.Posix          ((</>))
 import           System.Environment
 import           Prelude                hiding  (error)
 
-
 main :: IO ()
 main = do
     mainConfig <- OS.execParser opts
@@ -33,44 +32,7 @@ main = do
     where
         opts = OS.info (parseConfig OS.<**> OS.helper)
             ( OS.fullDesc
-            <> OS.progDesc "hjc MiniJava Compiler"
             <> OS.header "hjc - A MiniJava Compiler in Haskell" )
-
-
-mainTestConfig :: Config
-mainTestConfig = Config {
-    javaFile      = ""
-  , showAst'      = False
-  , showResult'   = False
-  , showTime'     = True
-  , canonizeCmm   = True
-  , compileToCmm  = True
-  , compileToX86  = True
-  , compileToAllocatedX86 = True
-  , createCFGraph = True
-  , javaOutputDir = "../output"
-  , cmmOutputDir  = "../cmm-output"
-  , x86OutputDir  = "../x86-output"
-  , cfOutputDir   = "../cf-graph-output"
-  , typeErrLvl    = AllErrors
-}
-
-
-main' :: FilePath -> IO ()
-main' fp = do
-    let inputFile = "../examples/MiniJava_Examples/Small/" ++ fp ++ ".java"
-    evaluateProgram mainTestConfig inputFile
-
-main_ :: FilePath -> IO ()
-main_ fp = do
-    let inputFile = "../examples/MiniJava_Examples/Large/" ++ fp ++ ".java"
-    evaluateProgram mainTestConfig inputFile
-
-
-
-main'' = do
-    let inputFile = "../examples/" ++ "Spill" ++ ".java"
-    evaluateProgram mainTestConfig inputFile
 
 evaluateProgram :: Config -> FilePath -> IO ()
 evaluateProgram config inputFile = do
@@ -93,18 +55,14 @@ evaluateProgram config inputFile = do
 
             oi <- getTimed $ do
                 typescope <- time $ typecheck ast
-
                 let oi = success inputFile input parseTime ast typescope
-
-                -- std out
+                
                 time_ $ showTypeScope oi config
                 time_ $ showSuccess   oi config
-
-                -- parsing ast to java
                 time_ $ writeJavaOutput         oi config
                 time_ $ writeCmmOutput          oi config
                 time_ $ writeX86Output          oi config
-                time_ $ writeCFGraphOutput      oi config
+                time_ $ writeIFGraph            oi config
                 time_ $ writeAllocatedX86Output oi config
                 ms <- getTimeInMs
                 return oi { timeS = parseTime + ms }
@@ -112,3 +70,33 @@ evaluateProgram config inputFile = do
             showTime oi config
 
     putStrLn $ replicate 80 '-'
+
+mainTestConfig :: Config
+mainTestConfig = defaultConfig {
+    javaFile      = ""
+  , showAst'      = False
+  , showTime'     = True
+  , canonizeCmm   = True
+  , compileToCmm  = True
+  , compileToX86  = True
+  , compileToAllocatedX86 = True
+  , createIFGraph = False
+  , javaOutputDir = "../output"
+  , cmmOutputDir  = "../cmm-output"
+  , x86OutputDir  = "../x86-output"
+  , cfOutputDir   = "../cf-graph-output"
+  , typeErrLvl    = AllErrors
+  , showJava      = False
+  , inParallel    = False
+}
+
+mainSmall :: FilePath -> IO ()
+mainSmall fp = do
+    let inputFile = "../examples/MiniJava_Examples/Small/" ++ fp ++ ".java"
+    evaluateProgram mainTestConfig inputFile
+
+mainLarge :: FilePath -> IO ()
+mainLarge fp = do
+    let inputFile = "../examples/MiniJava_Examples/Large/" ++ fp ++ ".java"
+    evaluateProgram mainTestConfig inputFile
+

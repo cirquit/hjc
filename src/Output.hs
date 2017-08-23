@@ -13,6 +13,7 @@ import           Data.List.NonEmpty                 (head)
 import qualified Data.List.Split       as LS
 import           Control.Lens
 import           Control.Monad                      (when)
+import           System.Exit                        (exitFailure)
 
 import           AST
 import           Config
@@ -28,6 +29,8 @@ import           Cmm.InterferenceGraph               (createInterferenceGraph)
 import           Cmm.X86.Backend                     (generatex86)
 import           Cmm.Register.Allocation             (generateAllocatedx86)
 
+-- | Every output of the compiler is managed here
+--
 data OutputInfo = OutputInfo {
     fileName    :: String
   , fileInput   :: String
@@ -37,10 +40,8 @@ data OutputInfo = OutputInfo {
   , typescope   :: Maybe TypeScope
 }
 
-
 success :: FilePath -> String -> Double -> MiniJava -> TypeScope -> OutputInfo
 success fp i t ast ts = OutputInfo fp i t (Just ast) Nothing (Just ts)
-
 
 failed :: FilePath -> String -> Double -> ParseError Char Dec -> OutputInfo
 failed fp i t e       = OutputInfo fp i t Nothing    (Just e) Nothing
@@ -56,6 +57,7 @@ showTypeScope oi config = do
         else do
             putChunk $ (chunk "Typechecking failed: \n\n") & fore red
             printErrors (view errors ts) (typeErrLvl config)
+            exitFailure
 
 printErrors :: [TypeError] -> TypeErrorLevel -> IO ()
 printErrors tes errlvl   = do
@@ -140,7 +142,7 @@ showTimeFin :: Double -> IO ()
 showTimeFin t = putChunk $ (chunk " Finished in: ") <> (chunk $ show t) <> (chunk "ms\n") & italic
 
 writeJavaOutput :: OutputInfo -> Config -> IO ()
-writeJavaOutput (OutputInfo inputName _ _ (Just ast) _ _) conf = do
+writeJavaOutput (OutputInfo inputName _ _ (Just ast) _ _) conf = when (showJava conf) $ do
     let _ : name : _ = reverse <$> (LS.splitOneOf "./" $ reverse inputName)
     let outputName = (javaOutputDir conf) </> (name ++ "-output.java")
     let result = showJC ast
@@ -181,20 +183,18 @@ writeAllocatedX86Output ::  OutputInfo -> Config -> IO ()
 writeAllocatedX86Output (OutputInfo inputName _ _ (Just ast) _ _) conf = when (compileToAllocatedX86 conf) $ do
     let _ : name : _ = reverse <$> (LS.splitOneOf "./" $ reverse inputName)
         outputName = (x86OutputDir conf) </> (name ++ "-allocated.s")
-    result <- generateAllocatedx86 ast 
+    result <- generateAllocatedx86 ast (inParallel conf)
     writeFile outputName (show result)
     putChunk $ (chunk ">> ")
     putChunk $ (chunk "Written: ") & fore green
     putChunk $ (chunk outputName) <> (chunk "\n") & bold
 
-writeCFGraphOutput :: OutputInfo -> Config -> IO ()
-writeCFGraphOutput (OutputInfo inputName _ _ (Just ast) _ _) conf = when (createCFGraph conf) $ do
+writeIFGraph :: OutputInfo -> Config -> IO ()
+writeIFGraph (OutputInfo inputName _ _ (Just ast) _ _) conf = when (createIFGraph conf) $ do
     let _ : name : _ = reverse <$> (LS.splitOneOf "./" $ reverse inputName)
         outputName = (cfOutputDir conf) </> (name ++ ".dot")
-    result <- generatex86 ast
-    let -- !cfgraph = createControlFlowGraph result
-        -- !activity = map activityAnalysis cfgraph
-        !ifgraph  = map createInterferenceGraph (x86functions result)
+    result <- generatex86 ast 
+    let !ifgraph  = map createInterferenceGraph (x86functions result)
     writeFile outputName (concatMap show ifgraph)
     putChunk $ (chunk ">> ")
     putChunk $ (chunk "Written: ") & fore green

@@ -20,8 +20,6 @@ library
   exposed-modules:     Lexer
                      , AST
                      , ASTParser
-                     , ParserRecords
-                     , ParserLens
                      , Output
                      , TimeMonad
                      , SymbolTable

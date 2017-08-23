@@ -57,17 +57,31 @@ instance MachineFunction X86Func X86Instr where
 
         f { x86body = newBody, x86comments = newComments }
 
+    
+--  machineFunctionFilterUnusedMoves :: f -> Set Temp -> f
+-- | uses the interference graph to remove any instructions which are not in
+--   the used temp list
+--
+    machineFunctionFilterUnusedMoves f usedTemps =
+        let code :: [(X86Instr, X86Comment)]
+            code     = zip (x86body f) (x86comments f)
+
+            newCode :: [(X86Instr, X86Comment)]
+            newCode = filter (usedMoves usedTemps) code
+
+--            (newBody, newComments) :: ([X86Instr], [X86Comment])
+            (newBody, newComments) = unzip newCode
+
+        in f { x86body = newBody, x86comments = newComments }
 
 --  machineFunctionFilterInstructions :: f -> f
 -- | we filter every instruction with a 'Temp', and 'MOVES' between same Temps
-    machineFunctionFilterInstructions f = do
+--
+    machineFunctionFilterInstructions f =
         let code     = zip (x86body f) (x86comments f)
-
             newCode = filter (not . badInstructions) code 
-
             (newBody, newComments) = unzip newCode
-
-        f { x86body = newBody, x86comments = newComments }
+        in f { x86body = newBody, x86comments = newComments }
 
 --  machineFunctionRenameByMap :: f -> Map Temp Temp -> f
     machineFunctionRenameByMap f tempMapping = do
@@ -75,8 +89,6 @@ instance MachineFunction X86Func X86Instr where
 
             createMappings :: [(Temp -> Temp)]
             createMappings = map (\(k, v) -> renameTemp k v) $ Map.toList tempMapping
-            -- TODO
-            -- !z = trace ("Tempmappings: \n" ++ concatMap (\x -> show x ++ "\n") (Map.toAscList tempMapping)) 1
 
             newBody :: [X86Instr]
             newBody = map (\i -> foldl' renameInstr i createMappings) body
@@ -113,16 +125,8 @@ spillTemps f = go (x86body f) (x86comments f)
                
                 defd :: Set Temp
                 defd = Set.intersection (def i) st
-                -- error "before trace?"
-               -- !z = trace (unlines [
-               --     ("instruction: " ++ show i)
-               --     ,"st:          " ++ show st
-               --     ,"use:         " ++ (show $use i)
-               --     ,"used:        " ++ (show used)
-               --     ,"def:         " ++ (show $ def i)
-               --     ,"defd:        " ++ (show defd) ]) 1
-
-            usedInstructions   <- mapM genUsedInstructions $ Set.toList used -- `Set.intersection` defd) 
+    
+            usedInstructions   <- mapM genUsedInstructions $ Set.toList used
             defdInstructions   <- mapM genDefsInstructions $ Set.toList defd
             renamedInstruction <- replaceTemps i (used `Set.union` defd)
 
@@ -304,22 +308,16 @@ x86Use (Binary MOV  (_, (Reg _)) (_, op))  = addTemp op
 x86Use (Binary _    (_,     op1) (_, op2)) = addTemp op1 ++ addTemp op2
 x86Use  RET                      = [eaxT]
 x86Use (CALL _)                  = []
-x86Use x@_                       = [] -- trace ("No temps for this guy: " ++ show x) []
+x86Use x@_                       = []
 
 x86Def :: X86Instr -> [Temp]
 x86Def (Unary  POP  (_, op)) = addTemp op
 x86Def (Unary  PUSH (_, _))  = []
 x86Def (Unary  IDIV (_, _))  = [edxT, eaxT]
 x86Def (CALL _)              = [eaxT, ecxT, edxT]
-x86Def (Binary ADD    (_, op) (_, _)) = addTemp op
-x86Def (Binary AND    (_, op) (_, _)) = addTemp op
-x86Def (Binary IMUL   (_, op) (_, _)) = addTemp op
 x86Def (Binary MOV    (_, Mem eq) (_, _)) = []
-x86Def (Binary MOV    (_, op) (_, _)) = addTemp op
-x86Def (Binary OR     (_, op) (_, _)) = addTemp op
-x86Def (Binary XOR    (_, op) (_, _)) = addTemp op
-x86Def (Binary SUB    (_, op) (_, _)) = addTemp op
-x86Def x@_                            = [] -- trace ("No temps for this guy: " ++ show x) []
+x86Def (Binary _    (_, op) (_, _)) = addTemp op
+x86Def x@_                            = []
 
 x86Jump :: X86Instr -> [Label]
 x86Jump (JMP l)  = [l]
@@ -397,3 +395,8 @@ areGeneratedTemps _        = False
 
 badInstructions :: (X86Instr, X86Comment) -> Bool
 badInstructions (i,_) = sameBinaryMove i || invalidTemp i
+
+-- | if a temp is not used, the instruction should not be in the code
+usedMoves :: Set Temp -> (X86Instr, X86Comment) -> Bool
+usedMoves usedTemps ((Binary MOV (_, Reg t) _), c) = (t `Set.member` usedTemps) || t == espT || t == ebpT
+usedMoves _ _ = True

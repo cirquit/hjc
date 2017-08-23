@@ -28,7 +28,7 @@ spec = do
                 successfulFileNames = [
                       "Add"
                     , "ArrayAccess"
-                   -- , "ArrSum"
+                    , "ArrSum"
                     , "Effects"
                     , "Factorial"
                     , "Precedence"
@@ -53,15 +53,15 @@ spec = do
                 pathToTestFile      = "examples/MiniJava_Examples/Large/"
                 successfulFileNames = [
                      "BinarySearch"
-                  -- , "BinaryTree"  -- takes too long for risc386
-                     "BubbleSort" 
+                    ,"BinaryTree"  -- takes too long for risc386
+                    ,"BubbleSort" 
                     , "Fib"
                     , "FibL"
                     , "LinearSearch"
                     , "Graph"
-                  -- , "LinkedList"
+                    , "LinkedList"
                     , "ManyArgs"
-                   -- , "Newton"      -- takes too long for risc386
+                    -- , "Newton"      -- takes too long for risc386
                     , "Primes"
                     , "QuickSort"
                    -- , "GameOfLife"  -- takes too long for risc386
@@ -78,7 +78,6 @@ testConfig = Config
     {
       javaFile      = ""
     , showAst'      = False
-    , showResult'   = False
     , showTime'     = True
     , compileToCmm  = False
     , compileToX86  = False

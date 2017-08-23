@@ -1,7 +1,6 @@
 module TypeCheck.TCCore where
 
 import qualified Data.Map                     as Map
--- import Control.Monad (foldM)
 import           Control.Monad.Trans.State
 import           Control.Monad.IO.Class
 import           Control.Lens
