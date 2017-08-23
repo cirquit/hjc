@@ -53,7 +53,7 @@ spec = do
                 pathToTestFile      = "examples/MiniJava_Examples/Large/"
                 successfulFileNames = [
                      "BinarySearch"
-                    ,"BinaryTree"  -- takes too long for risc386
+--                    ,"BinaryTree"  -- takes too long for the interpreter ghci
                     ,"BubbleSort" 
                     , "Fib"
                     , "FibL"
@@ -61,10 +61,10 @@ spec = do
                     , "Graph"
                     , "LinkedList"
                     , "ManyArgs"
-                    -- , "Newton"      -- takes too long for risc386
+                    -- , "Newton"      -- takes too long 
                     , "Primes"
                     , "QuickSort"
-                   -- , "GameOfLife"  -- takes too long for risc386
+                   -- , "GameOfLife"  -- takes too long
                     ]
 
                 testList            = zip successfulFileNames (iterate id successfulTitle)
@@ -74,7 +74,7 @@ spec = do
                 makeC input >>= \b -> b `shouldBe` ExitSuccess) testList
 
 testConfig :: Config
-testConfig = Config
+testConfig = defaultConfig 
     {
       javaFile      = ""
     , showAst'      = False
@@ -83,7 +83,7 @@ testConfig = Config
     , compileToX86  = False
     , compileToAllocatedX86 = True
     , canonizeCmm   = True
-    , createCFGraph = False 
+    , createIFGraph = False 
     , javaOutputDir = "output"
     , cmmOutputDir  = "cmm-output"
     , x86OutputDir  = "x86-output"

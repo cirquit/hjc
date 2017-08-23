@@ -82,17 +82,16 @@ spec = do
 
 
 testConfig :: Config
-testConfig = Config
+testConfig = defaultConfig
     {
       javaFile      = ""
     , showAst'      = False
-    , showResult'   = False
     , showTime'     = True
     , compileToCmm  = True
     , compileToX86  = True
     , compileToAllocatedX86 = False
     , canonizeCmm   = True
-    , createCFGraph = False
+    , createIFGraph = False
     , javaOutputDir = "output"
     , cmmOutputDir  = "cmm-output"
     , x86OutputDir  = "x86-output"

@@ -89,17 +89,16 @@ makeC inputFile = do
 
 
 testConfig :: Config
-testConfig = Config
+testConfig = defaultConfig
     {
       javaFile      = ""
     , showAst'      = False
-    , showResult'   = False
     , showTime'     = True
     , compileToCmm  = True
     , compileToX86  = False
     , compileToAllocatedX86 = False
     , canonizeCmm   = True 
-    , createCFGraph = True
+    , createIFGraph = True
     , javaOutputDir = "output"
     , cmmOutputDir  = "cmm-output"
     , x86OutputDir  = "x86-output"

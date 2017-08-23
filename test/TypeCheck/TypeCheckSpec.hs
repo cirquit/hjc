@@ -109,7 +109,6 @@ spec = do
 testConfig :: Config
 testConfig = defaultConfig {
       showAst'      = False
-    , showResult'   = False
     , showTime'     = True
     , compileToCmm  = True
     , compileToAllocatedX86 = False
