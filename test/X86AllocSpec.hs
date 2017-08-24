@@ -24,52 +24,84 @@ spec = do
         describe "should be successful for small tests" $ do
             let showTypeErrors      = False
                 successfulTitle     = "should compile with gcc "
-                pathToTestFile      = "examples/MiniJava_Examples/Small/"
+                pathToTestFile      = "examples/Small/"
                 successfulFileNames = [
                       "Add"
+                    , "Arg"
+                    , "Arithmetic"
                     , "ArrayAccess"
                     , "ArrSum"
+                    , "BlockStatement"
+                    , "Call"
+                    , "CallThis"
+                    , "Comparisons"
                     , "Effects"
                     , "Factorial"
+                    , "Fields"
+                    , "If"
+                    , "IntOps"
+                    , "Leet"
+                    , "Loops"
+                    , "Min"
+                    , "OurArrSum"
                     , "Precedence"
                     , "Scope2"
+                    , "Shadow1"
+                    , "Shadow2"
                     , "ShortCutAnd"
+                    , "ShortCutReturn"
+                    , "Spill"
+                    , "StackArgs"
                     , "Stck"
                     , "Sum"
                     , "TestEq"
                     , "TrivialClass"
+                    , "VVST"
                     , "While"
                     ]
 
                 testList            = zip successfulFileNames (iterate id successfulTitle)
             mapM_ (\(input, title) -> it (title ++ input) $ do
-                let inputFile = "examples/MiniJava_Examples/Small/" ++ input ++ ".java"
+                let inputFile = "examples/Small/" ++ input ++ ".java"
                 run inputFile False
                 makeC input >>= \b -> b `shouldBe` ExitSuccess) testList
 
         describe "should be successful for large tests" $ do
             let showTypeErrors      = True
                 successfulTitle     = "should compile with gcc "
-                pathToTestFile      = "examples/MiniJava_Examples/Large/"
+                pathToTestFile      = "examples/Large/"
                 successfulFileNames = [
-                     "BinarySearch"
---                    ,"BinaryTree"  -- takes too long for the interpreter ghci
-                    ,"BubbleSort" 
+                      "BinarySearch"
+--                     , "BinaryTree"     -- takes too long so far
+                    , "Brainfuck"
+                    , "BubbleSort"
+                    , "Div"
+                    , "E"
+                    , "Fannkuch"
                     , "Fib"
                     , "FibL"
-                    , "LinearSearch"
+--                     , "GameOfLifeAnim" -- takes too long so far
+--                     , "GameOfLife"     -- takes too long so far
                     , "Graph"
+                    , "Hanoi"
+                    , "LinearSearch"
                     , "LinkedList"
+                    , "MandelbrotAnim"
+                    , "Mandelbrot"
                     , "ManyArgs"
-                    -- , "Newton"      -- takes too long 
+--                     , "Newton"         -- takes too long so far
+--                     , "Pi"             -- takes too long so far
+                    , "PiSin"
                     , "Primes"
                     , "QuickSort"
-                   -- , "GameOfLife"  -- takes too long
+                    , "RaytraceAndGauss"
+                    , "Raytrace"
+                    , "QuickSort"
                     ]
 
                 testList            = zip successfulFileNames (iterate id successfulTitle)
             mapM_ (\(input, title) -> it (title ++ input) $ do
-                let inputFile = "examples/MiniJava_Examples/Large/" ++ input ++ ".java"
+                let inputFile = "examples/Large/" ++ input ++ ".java"
                 run inputFile False
                 makeC input >>= \b -> b `shouldBe` ExitSuccess) testList
 

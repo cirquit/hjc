@@ -11,7 +11,7 @@ class GameOfLifeAnim {
 
 
 class PrimeNumbers {
-  int[] primes;
+  int [] primes;
   int len;
 
   public int getPrime(int i) {
@@ -135,7 +135,7 @@ class Hash {
 
 class Board {
 
-  int[] board;
+  int [] board;
   int width;
   int height;
 

@@ -31,7 +31,8 @@ spec = do
                 successfulTitle     = "should have zero length of typescope errors in "
                 pathToTestFile      = "examples/MiniJava_Examples/Small/"
                 successfulFileNames = [
-                      "ArrayAccess"
+                      "Add"
+                    , "ArrayAccess"
                     , "ArrSum"
                     , "Effects"
                     , "Factorial"
@@ -48,33 +49,47 @@ spec = do
                 testList            = zip successfulFileNames (iterate id successfulTitle)
 
             mapM_ (\(input, title) -> it (title ++ input) $ do
-                let inputFile = "examples/MiniJava_Examples/Small/" ++ input ++ ".java"
+                let inputFile = "examples/Small/" ++ input ++ ".java"
                 hasTypeErrors inputFile False
                 makeC input >>= \b -> b `shouldBe` ExitSuccess) testList
 
         describe "should be successful for large test" $ do
             let showTypeErrors      = True
                 successfulTitle     = "should have zero length of typescope errors in "
-                pathToTestFile      = "examples/MiniJava_Examples/Large/"
+                pathToTestFile      = "examples/Large/"
                 successfulFileNames = [
                       "BinarySearch"
                     , "BinaryTree"
+                    , "Brainfuck"
                     , "BubbleSort"
+                    , "Div"
+                    , "E"
+                    , "Fannkuch"
                     , "Fib"
                     , "FibL"
+                    , "GameOfLifeAnim"
+                    , "GameOfLife"
                     , "Graph"
+                    , "Hanoi"
                     , "LinearSearch"
                     , "LinkedList"
+                    , "MandelbrotAnim"
+                    , "Mandelbrot"
                     , "ManyArgs"
                     , "Newton"
+                    , "Pi"
+                    , "PiSin"
                     , "Primes"
+                    , "QuickSort"
+                    , "RaytraceAndGauss"
+                    , "Raytrace"
                     , "QuickSort"
                     ]
 
                 testList            = zip successfulFileNames (iterate id successfulTitle)
 
             mapM_ (\(input, title) -> it (title ++ input) $ do
-                let inputFile = "examples/MiniJava_Examples/Large/" ++ input ++ ".java"
+                let inputFile = "examples/Large/" ++ input ++ ".java"
                 hasTypeErrors inputFile False
                 makeC input >>= \b -> b `shouldBe` ExitSuccess) testList
 

@@ -1,6 +1,8 @@
 // Equations are taken from
 // http://www.siggraph.org/education/materials/HyperGraph/raytrace/rtrace0.htm
+// and I've looked at
 // http://www.nobugs.org/developer/htrace/htrace.hs
+// when writing this.
 
 class Raytrace {
 

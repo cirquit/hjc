@@ -23,27 +23,46 @@ spec = do
         describe "should be successful for small tests" $ do
             let showTypeErrors      = False
                 successfulTitle     = "should emulate "
-                pathToTestFile      = "examples/MiniJava_Examples/Small/"
+                pathToTestFile      = "examples/Small/"
                 successfulFileNames = [
-                      "Add"
-                    , "ArrayAccess"
-                    , "ArrSum"
-                    , "Effects"
-                    , "Factorial"
-                    , "Precedence"
-                    , "Scope2"
-                    , "ShortCutAnd"
-                    , "Stck"
-                    , "Sum"
-                    , "TestEq"
-                    , "TrivialClass"
-                    , "While"
+                      "Add.java"
+                    , "Arg.java"
+                    , "Arithmetic.java"
+                    , "ArrayAccess.java"
+                    , "ArrSum.java"
+                    , "BlockStatement.java"
+                    , "Call.java"
+                    , "CallThis.java"
+                    , "Comparisons.java"
+                    , "Effects.java"
+                    , "Factorial.java"
+                    , "Fields.java"
+                    , "If.java"
+                    , "IntOps.java"
+                    , "Leet.java"
+                    , "Loops.java"
+                    , "Min.java"
+                    , "OurArrSum.java"
+                    , "Precedence.java"
+                    , "Scope2.java"
+                    , "Shadow1.java"
+                    , "Shadow2.java"
+                    , "ShortCutAnd.java"
+                    , "ShortCutReturn.java"
+                    , "Spill.java"
+                    , "StackArgs.java"
+                    , "Stck.java"
+                    , "Sum.java"
+                    , "TestEq.java"
+                    , "TrivialClass.java"
+                    , "VVST.java"
+                    , "While.java"
                     ]
 
                 testList            = zip successfulFileNames (iterate id successfulTitle)
 
             mapM_ (\(input, title) -> it (title ++ input) $ do
-                let inputFile = pathToTestFile ++ input ++ ".java"
+                let inputFile = pathToTestFile ++ input
                 let asmFile = ((("x86-output/") ++ input ++".s")::FilePath)
                 run inputFile False
                 result <- newMain asmFile
@@ -53,27 +72,39 @@ spec = do
         describe "should be successful for large tests" $ do
             let showTypeErrors      = True
                 successfulTitle     = "should emulate "
-                pathToTestFile      = "examples/MiniJava_Examples/Large/"
+                pathToTestFile      = "examples/Large/"
                 successfulFileNames = [
-                      "BinarySearch"
-                   -- , "BinaryTree"  -- takes too long for risc386
-                    , "BubbleSort" 
-                    , "Fib"
-                    , "FibL"
-                    , "Graph"
-                    , "LinearSearch"
-                    , "LinkedList"
-                    , "ManyArgs"
-                   -- , "Newton"      -- takes too long for risc386
-                    , "Primes"
-                    , "QuickSort"
-                   -- , "GameOfLife"  -- takes too long for risc386
+                      "BinarySearch.java"
+--                     , "BinaryTree.java"       -- takes too long so far
+                    , "Brainfuck.java"
+                    , "BubbleSort.java"
+                    , "Div.java"
+                    , "E.java"
+                    , "Fannkuch.java"
+                    , "Fib.java"
+                    , "FibL.java"
+                    , "GameOfLifeAnim.java"
+                    , "GameOfLife.java"
+                    , "Graph.java"
+                    , "Hanoi.java"
+                    , "LinearSearch.java"
+                    , "LinkedList.java"
+                    , "MandelbrotAnim.java"
+                    , "Mandelbrot.java"
+                    , "ManyArgs.java"
+                    , "Newton.java"
+                    , "Pi.java"
+                    , "PiSin.java"
+                    , "Primes.java"
+                    , "QuickSort.java"
+--                     , "RaytraceAndGauss.java" -- takes too long so far
+--                     , "Raytrace.java"         -- takes too long so far
                     ]
 
                 testList            = zip successfulFileNames (iterate id successfulTitle)
 
             mapM_ (\(input, title) -> it (title ++ input) $ do
-                let inputFile = pathToTestFile ++ input ++ ".java"
+                let inputFile = pathToTestFile ++ input
                 let asmFile = ((("x86-output/") ++ input ++".s")::FilePath)
                 run inputFile False
                 result <- newMain asmFile
